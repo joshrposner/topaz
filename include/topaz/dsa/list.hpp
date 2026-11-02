@@ -9,42 +9,6 @@
 
 namespace tpz::dsa {
 
-/// @brief Internal node of List. Owns the next node; points back to the previous one.
-/// @tparam T Element type.
-template<class T>
-struct Node {
-public:
-  T val_;
-  Node<T>* prev_;
-  std::unique_ptr<Node<T>> next_;
-
-  /// @brief Creates a node holding @p val, linked between @p prev and @p next.
-  /// @param val Value to store.
-  /// @param prev Previous node (not owned), or nullptr if this is the first node.
-  /// @param next Next node, whose ownership passes to this node; nullptr if this is the last node.
-  Node(T val, Node<T>* prev = nullptr, std::unique_ptr<Node<T>> next = nullptr)
-    : val_(std::move(val)), prev_(prev), next_(std::move(next)) {}
-
-  /// @brief Not copyable: a node uniquely owns the rest of the chain.
-  Node(const Node& other) = delete;
-
-  /// @brief Takes over @p other's links and copies its value.
-  /// @note @p other keeps its @c prev_ pointer, but its @c next_ becomes null.
-  Node(Node&& other) noexcept : val_(std::move(other.val_)), prev_(other.prev_), next_(std::move(other.next_)) {}
-
-  /// @brief Not copyable: a node uniquely owns the rest of the chain.
-  Node& operator=(const Node& other) = delete;
-
-  /// @brief Takes over @p other's links and copies its value, freeing this node's old successor.
-  /// @note @p other keeps its @c prev_ pointer, but its @c next_ becomes null.
-  Node& operator=(Node&& other) noexcept {
-    val_ = other.val_;
-    prev_ = other.prev_;
-    next_ = std::move(other.next_);
-    return *this;
-  }
-};
-
 /// @brief Doubly linked, non-intrusive list.
 ///
 /// Each element lives in its own heap-allocated node, and the list owns a copy of every element.
@@ -56,6 +20,43 @@ public:
 template<class T>
 class List {
 private:
+
+  /// @brief Internal node of List. Owns the next node; points back to the previous one.
+  /// @tparam T Element type.
+  template<class T_>
+  struct Node {
+  public:
+    T_ val_;
+    Node<T_>* prev_;
+    std::unique_ptr<Node<T_>> next_;
+
+    /// @brief Creates a node holding @p val, linked between @p prev and @p next.
+    /// @param val Value to store.
+    /// @param prev Previous node (not owned), or nullptr if this is the first node.
+    /// @param next Next node, whose ownership passes to this node; nullptr if this is the last node.
+    Node(T_ val, Node<T_>* prev = nullptr, std::unique_ptr<Node<T_>> next = nullptr)
+      : val_(std::move(val)), prev_(prev), next_(std::move(next)) {}
+
+    /// @brief Not copyable: a node uniquely owns the rest of the chain.
+    Node(const Node& other) = delete;
+
+    /// @brief Takes over @p other's links and copies its value.
+    /// @note @p other keeps its @c prev_ pointer, but its @c next_ becomes null.
+    Node(Node&& other) noexcept : val_(std::move(other.val_)), prev_(other.prev_), next_(std::move(other.next_)) {}
+
+    /// @brief Not copyable: a node uniquely owns the rest of the chain.
+    Node& operator=(const Node& other) = delete;
+
+    /// @brief Takes over @p other's links and copies its value, freeing this node's old successor.
+    /// @note @p other keeps its @c prev_ pointer, but its @c next_ becomes null.
+    Node& operator=(Node&& other) noexcept {
+      val_ = other.val_;
+      prev_ = other.prev_;
+      next_ = std::move(other.next_);
+      return *this;
+    }
+  };
+
   std::unique_ptr<Node<T>> head_;
   Node<T>* tail_;
   std::size_t size_;

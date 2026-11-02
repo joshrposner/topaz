@@ -96,11 +96,12 @@ enum class MarketTif {
 /// Matches only at @c price or better: at or below @c price for a bid, at or above it for an ask.
 /// What happens to unfilled quantity depends on @c tif.
 struct NewLimit {
-  OrderId id;
   Side side;
   Price price; ///< Worst acceptable price.
   Qty qty;
   Tif tif;
+
+  friend bool operator==(const NewLimit&, const NewLimit&) = default;
 };
 
 /// @brief Request to submit a market order.
@@ -108,15 +109,18 @@ struct NewLimit {
 /// Matches at any price, best price first, until filled or the opposite side runs out. Never rests
 /// on the book; what happens to unfilled quantity depends on @c tif.
 struct NewMarket {
-  OrderId id;
   Side side;
   Qty qty;
   MarketTif tif;
+
+  friend bool operator==(const NewMarket&, const NewMarket&) = default;
 };
 
 /// @brief Request to cancel the resting order with @c id.
 struct Cancel {
   OrderId id;
+
+  friend bool operator==(const Cancel&, const Cancel&) = default;
 };
 
 /// @brief Any request the engine accepts.
@@ -128,11 +132,13 @@ struct RestingOrder {
   Side side;
   Price price;
   Qty qty; ///< Remaining unfilled quantity, which can be less than the original order's.
+
+  friend bool operator==(const RestingOrder&, const RestingOrder&) = default;
 };
 
-// Helper utility to match types
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+/// @brief Helper utility to match variants
+template<class... Ts> struct VisitHelper : Ts... { using Ts::operator()...; };
+template<class... Ts> VisitHelper(Ts...) -> VisitHelper<Ts...>;
 
 } // namespace tpz
 
