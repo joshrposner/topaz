@@ -1,25 +1,27 @@
 #pragma once
 
 #include <cstdint>
-#include <variant>
 #include <functional>
+#include <variant>
 
 namespace tpz {
 
-/// @brief Integer wrapper that makes each @p Tag a distinct, non-interchangeable type.
+/// @brief Integer wrapper that makes each @p Tag a distinct,
+/// non-interchangeable type.
 ///
-/// Prevents mixing up values that share a representation, such as passing a price where a
-/// quantity is expected. Construction from a raw integer is explicit, so every value is labeled
-/// at the call site: `Price{10125}`, not `10125`. Supports comparison only; there is no
-/// arithmetic yet.
+/// Prevents mixing up values that share a representation, such as passing a
+/// price where a quantity is expected. Construction from a raw integer is
+/// explicit, so every value is labeled at the call site: `Price{10125}`, not
+/// `10125`. Supports comparison only; there is no arithmetic yet.
 ///
-/// All members are `constexpr`, so values can be used in constant expressions and
-/// `static_assert`.
+/// All members are `constexpr`, so values can be used in constant expressions
+/// and `static_assert`.
 ///
-/// @tparam Tag Empty struct that only distinguishes one StrongInt type from another.
-template<typename Tag>
+/// @tparam Tag Empty struct that only distinguishes one StrongInt type from
+/// another.
+template <typename Tag>
 class StrongInt {
-public:
+ public:
   /// @brief Underlying integer representation.
   using Rep = std::int64_t;
 
@@ -29,16 +31,25 @@ public:
   /// @brief Wraps the raw integer @p val.
   constexpr explicit StrongInt(Rep val) : val_(val) {}
 
-    /// @brief Adds @p rhs to the underlying value.
-  constexpr StrongInt& operator+=(StrongInt rhs) { val_ += rhs.val_; return *this; }
+  /// @brief Adds @p rhs to the underlying value.
+  constexpr StrongInt& operator+=(StrongInt rhs) {
+    val_ += rhs.val_;
+    return *this;
+  }
   /// @brief Subtracts @p rhs from the underlying value.
-  constexpr StrongInt& operator-=(StrongInt rhs) { val_ -= rhs.val_; return *this; }
+  constexpr StrongInt& operator-=(StrongInt rhs) {
+    val_ -= rhs.val_;
+    return *this;
+  }
 
   /// @brief Sum of the underlying values.
-  friend constexpr StrongInt operator+(StrongInt lhs, StrongInt rhs) { return lhs += rhs; }
+  friend constexpr StrongInt operator+(StrongInt lhs, StrongInt rhs) {
+    return lhs += rhs;
+  }
   /// @brief Difference of the underlying values.
-  friend constexpr StrongInt operator-(StrongInt lhs, StrongInt rhs) { return lhs -= rhs; }
-
+  friend constexpr StrongInt operator-(StrongInt lhs, StrongInt rhs) {
+    return lhs -= rhs;
+  }
 
   /// @brief Returns the underlying integer.
   [[nodiscard]] constexpr Rep val() const { return val_; }
@@ -46,7 +57,7 @@ public:
   /// @brief Compares by underlying value. Also provides `==` and `!=`.
   friend constexpr auto operator<=>(StrongInt, StrongInt) = default;
 
-private:
+ private:
   Rep val_;
 };
 
@@ -55,22 +66,24 @@ struct QtyTag {};
 struct OrderIdTag {};
 
 /// @brief Price in integer ticks. Never floating point.
-using Price   = StrongInt<PriceTag>;
+using Price = StrongInt<PriceTag>;
 /// @brief Order quantity in whole units.
-using Qty     = StrongInt<QtyTag>;
+using Qty = StrongInt<QtyTag>;
 /// @brief Client-assigned order identifier. A Cancel uses it to find its order.
 using OrderId = StrongInt<OrderIdTag>;
 
 /// @brief Side of the book an order belongs to.
 enum class Side {
-  Bid, ///< Buy order.
-  Ask, ///< Sell order.
+  Bid,  ///< Buy order.
+  Ask,  ///< Sell order.
 };
 
-/// @brief Time in force for a limit order: what happens to any part of it that does not fill on
+/// @brief Time in force for a limit order: what happens to any part of it that
+/// does not fill on
 ///        arrival.
 enum class Tif {
-  /// Fill what is possible now; the remainder rests on the book until filled or cancelled.
+  /// Fill what is possible now; the remainder rests on the book until filled or
+  /// cancelled.
   GoodTilCancel,
   /// Fill what is possible now; cancel the remainder. Never rests on the book.
   ImmediateOrCancel,
@@ -78,12 +91,15 @@ enum class Tif {
   FillOrKill,
 };
 
-/// @brief Time in force for a market order. Same meanings as the matching Tif values.
+/// @brief Time in force for a market order. Same meanings as the matching Tif
+/// values.
 ///
-/// There is no GoodTilCancel: a market order has no price, so its remainder cannot rest on the
-/// book. Separate from Tif so that combination cannot be represented.
+/// There is no GoodTilCancel: a market order has no price, so its remainder
+/// cannot rest on the book. Separate from Tif so that combination cannot be
+/// represented.
 ///
-/// @note The underlying values differ from Tif's, so convert with a `switch`, not a cast.
+/// @note The underlying values differ from Tif's, so convert with a `switch`,
+/// not a cast.
 enum class MarketTif {
   /// Fill what is possible now; cancel the remainder. Never rests on the book.
   ImmediateOrCancel,
@@ -93,11 +109,11 @@ enum class MarketTif {
 
 /// @brief Request to submit a limit order.
 ///
-/// Matches only at @c price or better: at or below @c price for a bid, at or above it for an ask.
-/// What happens to unfilled quantity depends on @c tif.
+/// Matches only at @c price or better: at or below @c price for a bid, at or
+/// above it for an ask. What happens to unfilled quantity depends on @c tif.
 struct NewLimit {
   Side side;
-  Price price; ///< Worst acceptable price.
+  Price price;  ///< Worst acceptable price.
   Qty qty;
   Tif tif;
 
@@ -106,8 +122,9 @@ struct NewLimit {
 
 /// @brief Request to submit a market order.
 ///
-/// Matches at any price, best price first, until filled or the opposite side runs out. Never rests
-/// on the book; what happens to unfilled quantity depends on @c tif.
+/// Matches at any price, best price first, until filled or the opposite side
+/// runs out. Never rests on the book; what happens to unfilled quantity depends
+/// on @c tif.
 struct NewMarket {
   Side side;
   Qty qty;
@@ -131,18 +148,23 @@ struct RestingOrder {
   OrderId id;
   Side side;
   Price price;
-  Qty qty; ///< Remaining unfilled quantity, which can be less than the original order's.
+  Qty qty;  ///< Remaining unfilled quantity, which can be less than the
+            ///< original order's.
 
   friend bool operator==(const RestingOrder&, const RestingOrder&) = default;
 };
 
 /// @brief Helper utility to match variants
-template<class... Ts> struct VisitHelper : Ts... { using Ts::operator()...; };
-template<class... Ts> VisitHelper(Ts...) -> VisitHelper<Ts...>;
+template <class... Ts>
+struct VisitHelper : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts>
+VisitHelper(Ts...) -> VisitHelper<Ts...>;
 
-} // namespace tpz
+}  // namespace tpz
 
-template<typename Tag>
+template <typename Tag>
 struct std::hash<tpz::StrongInt<Tag>> {
   std::size_t operator()(tpz::StrongInt<Tag> v) const noexcept {
     return std::hash<typename tpz::StrongInt<Tag>::Rep>{}(v.val());

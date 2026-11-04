@@ -1,10 +1,9 @@
-#include <cstdio>
-
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <cstdio>
 #include <topaz/engine/placeholder.hpp>
 
 namespace {
@@ -13,7 +12,7 @@ void glfw_error_callback(int error, const char* description) {
   std::fprintf(stderr, "GLFW error %d: %s\n", error, description);
 }
 
-} // namespace
+}  // namespace
 
 int main() {
   glfwSetErrorCallback(glfw_error_callback);
@@ -40,7 +39,7 @@ int main() {
     return 1;
   }
   glfwMakeContextCurrent(window);
-  glfwSwapInterval(1); // vsync
+  glfwSwapInterval(1);  // vsync
 
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();

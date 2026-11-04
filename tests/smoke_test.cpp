@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <topaz/dsa/placeholder.hpp>
 #include <topaz/engine/placeholder.hpp>
 #include <topaz/net/placeholder.hpp>
-
-#include <array>
 
 using std::nullopt;
 

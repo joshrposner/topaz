@@ -171,8 +171,8 @@ target_sources(topaz
       include/topaz/defs.hpp
       include/topaz/types.hpp
       include/topaz/engine/placeholder.hpp
-      include/topaz/engine/event.hpp
       include/topaz/engine/order_book.hpp
+      include/topaz/engine/event.hpp
       include/topaz/dsa/placeholder.hpp
       include/topaz/dsa/list.hpp
       include/topaz/net/placeholder.hpp

@@ -7,4 +7,4 @@ namespace tpz::net {
 
 [[nodiscard]] int placeholder() noexcept;
 
-} // namespace tpz::net
+}  // namespace tpz::net

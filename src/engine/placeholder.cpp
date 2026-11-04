@@ -4,4 +4,4 @@ namespace tpz::eng {
 
 int placeholder() noexcept { return 0; }
 
-} // namespace tpz::eng
+}  // namespace tpz::eng

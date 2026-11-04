@@ -1,33 +1,43 @@
 #include <gtest/gtest.h>
 
-#include <topaz/engine/order_book.hpp>
-
 #include <optional>
 #include <ostream>
+#include <topaz/engine/order_book.hpp>
 #include <utility>
 #include <variant>
 #include <vector>
 
 // Contract these tests assume:
-//   - Each book assigns ids to the new orders it accepts, starting at 1 and counting up in
+//   - Each book assigns ids to the new orders it accepts, starting at 1 and
+//   counting up in
 //     submission order. Rejected orders and cancels don't use an id.
-//   - A new order emits Accepted{id, request} first. One that can't be processed emits only
+//   - A new order emits Accepted{id, request} first. One that can't be
+//   processed emits only
 //     Rejected{request, reason}.
-//   - Each match emits Filled for the incoming order, then Filled for the resting order. Both are
-//     at the resting order's price, and each carries that order's own id and side.
-//   - Right after a match's two Filled events, each order whose remaining qty reached zero gets
+//   - Each match emits Filled for the incoming order, then Filled for the
+//   resting order. Both are
+//     at the resting order's price, and each carries that order's own id and
+//     side.
+//   - Right after a match's two Filled events, each order whose remaining qty
+//   reached zero gets
 //     Fulfilled: the incoming order first, then the resting one.
-//   - The unfilled remainder of a GTC limit order rests without emitting anything else.
-//   - Market orders match at any price, best price first. IOC and FOK orders, limit or market,
+//   - The unfilled remainder of a GTC limit order rests without emitting
+//   anything else.
+//   - Market orders match at any price, best price first. IOC and FOK orders,
+//   limit or market,
 //     never rest.
-//   - An IOC order ends with Fulfilled if it filled completely. Otherwise its last event is
+//   - An IOC order ends with Fulfilled if it filled completely. Otherwise its
+//   last event is
 //     Cancelled{id} for the remainder, including when nothing filled.
-//   - An FOK order either fills completely, with the same events as any other full fill, or emits
-//     only Accepted, Cancelled{id} and leaves the book untouched. Only resting quantity within its
-//     limit price counts toward filling it.
+//   - An FOK order either fills completely, with the same events as any other
+//   full fill, or emits
+//     only Accepted, Cancelled{id} and leaves the book untouched. Only resting
+//     quantity within its limit price counts toward filling it.
 //   - A new order with zero qty emits only Rejected{request, ZeroQty}.
-//   - Cancel emits only Cancelled{id}. Cancelling an id that isn't resting (unknown, already
-//     filled, or already cancelled) emits only Rejected{cancel, OrderIdNotFound}.
+//   - Cancel emits only Cancelled{id}. Cancelling an id that isn't resting
+//   (unknown, already
+//     filled, or already cancelled) emits only Rejected{cancel,
+//     OrderIdNotFound}.
 //   - orders() holds exactly the resting orders, each with its remaining qty.
 //
 // Not covered yet: negative qty.
@@ -53,12 +63,15 @@ using tpz::eng::Rejected;
 
 using Events = std::vector<Event>;
 
-// Printers so failures show readable values instead of raw bytes. They live in the types' own
-// namespaces so GoogleTest finds them by argument-dependent lookup.
+// Printers so failures show readable values instead of raw bytes. They live in
+// the types' own namespaces so GoogleTest finds them by argument-dependent
+// lookup.
 namespace tpz {
 
-template<typename Tag>
-std::ostream& operator<<(std::ostream& os, StrongInt<Tag> v) { return os << v.val(); }
+template <typename Tag>
+std::ostream& operator<<(std::ostream& os, StrongInt<Tag> v) {
+  return os << v.val();
+}
 
 std::ostream& operator<<(std::ostream& os, Side side) {
   return os << (side == Side::Bid ? "Bid" : "Ask");
@@ -66,23 +79,29 @@ std::ostream& operator<<(std::ostream& os, Side side) {
 
 std::ostream& operator<<(std::ostream& os, Tif tif) {
   switch (tif) {
-    case Tif::GoodTilCancel:     return os << "GTC";
-    case Tif::ImmediateOrCancel: return os << "IOC";
-    case Tif::FillOrKill:        return os << "FOK";
+    case Tif::GoodTilCancel:
+      return os << "GTC";
+    case Tif::ImmediateOrCancel:
+      return os << "IOC";
+    case Tif::FillOrKill:
+      return os << "FOK";
   }
   return os << "Tif(" << std::to_underlying(tif) << ')';
 }
 
 std::ostream& operator<<(std::ostream& os, MarketTif tif) {
   switch (tif) {
-    case MarketTif::ImmediateOrCancel: return os << "IOC";
-    case MarketTif::FillOrKill:        return os << "FOK";
+    case MarketTif::ImmediateOrCancel:
+      return os << "IOC";
+    case MarketTif::FillOrKill:
+      return os << "FOK";
   }
   return os << "MarketTif(" << std::to_underlying(tif) << ')';
 }
 
 std::ostream& operator<<(std::ostream& os, const NewLimit& o) {
-  return os << "NewLimit{" << o.side << ' ' << o.qty << " @ " << o.price << ' ' << o.tif << '}';
+  return os << "NewLimit{" << o.side << ' ' << o.qty << " @ " << o.price << ' '
+            << o.tif << '}';
 }
 
 std::ostream& operator<<(std::ostream& os, const NewMarket& o) {
@@ -99,10 +118,11 @@ std::ostream& operator<<(std::ostream& os, const Request& r) {
 }
 
 std::ostream& operator<<(std::ostream& os, const RestingOrder& o) {
-  return os << "RestingOrder{#" << o.id << ' ' << o.side << ' ' << o.qty << " @ " << o.price << '}';
+  return os << "RestingOrder{#" << o.id << ' ' << o.side << ' ' << o.qty
+            << " @ " << o.price << '}';
 }
 
-} // namespace tpz
+}  // namespace tpz
 
 namespace tpz::eng {
 
@@ -111,7 +131,8 @@ std::ostream& operator<<(std::ostream& os, const Accepted& e) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Filled& e) {
-  return os << "Filled{#" << e.id << ' ' << e.side << ' ' << e.qty << " @ " << e.price << '}';
+  return os << "Filled{#" << e.id << ' ' << e.side << ' ' << e.qty << " @ "
+            << e.price << '}';
 }
 
 std::ostream& operator<<(std::ostream& os, const Fulfilled& e) {
@@ -124,8 +145,10 @@ std::ostream& operator<<(std::ostream& os, const Cancelled& e) {
 
 std::ostream& operator<<(std::ostream& os, Rejected::Reason reason) {
   switch (reason) {
-    case Rejected::Reason::ZeroQty:         return os << "ZeroQty";
-    case Rejected::Reason::OrderIdNotFound: return os << "OrderIdNotFound";
+    case Rejected::Reason::ZeroQty:
+      return os << "ZeroQty";
+    case Rejected::Reason::OrderIdNotFound:
+      return os << "OrderIdNotFound";
   }
   return os << "Reason(" << std::to_underlying(reason) << ')';
 }
@@ -134,7 +157,7 @@ std::ostream& operator<<(std::ostream& os, const Rejected& e) {
   return os << "Rejected{" << e.request << ", " << e.reason << '}';
 }
 
-} // namespace tpz::eng
+}  // namespace tpz::eng
 
 namespace {
 
@@ -158,11 +181,13 @@ std::optional<RestingOrder> resting(const OrderBook& book, OrderId id) {
   return it->second;
 }
 
-// Submits an order that should be assigned `id` and rest without matching. Sample books are built
-// through the public API, so a bug could build the wrong book; this reports that at the source
-// instead of letting later assertions fail in confusing ways.
+// Submits an order that should be assigned `id` and rest without matching.
+// Sample books are built through the public API, so a bug could build the wrong
+// book; this reports that at the source instead of letting later assertions
+// fail in confusing ways.
 void rest(OrderBook& book, OrderId id, const Request& order) {
-  EXPECT_EQ(submit(book, order), (Events{Accepted{id, order}})) << "while building a sample book";
+  EXPECT_EQ(submit(book, order), (Events{Accepted{id, order}}))
+      << "while building a sample book";
 }
 
 // One order on each side, two ticks apart. The next order submitted gets #3.
@@ -176,8 +201,8 @@ OrderBook spread_book() {
   return book;
 }
 
-// Three levels per side, with two orders at each best level (listed in arrival order). The next
-// order submitted gets #9.
+// Three levels per side, with two orders at each best level (listed in arrival
+// order). The next order submitted gets #9.
 //
 //   ask  103: #8 x20
 //   ask  102: #7 x10
@@ -198,14 +223,15 @@ OrderBook deep_book() {
   return book;
 }
 
-} // namespace
+}  // namespace
 
 TEST(OrderBookTest, NewOrderBookIsEmpty) {
   OrderBook book;
   EXPECT_TRUE(book.orders().empty());
 }
 
-// ---- Order ids --------------------------------------------------------------------------------
+// ---- Order ids
+// --------------------------------------------------------------------------------
 
 TEST(OrderBookIdTest, FirstOrderGetsIdOne) {
   OrderBook book;
@@ -217,7 +243,8 @@ TEST(OrderBookIdTest, FirstOrderGetsIdOne) {
 TEST(OrderBookIdTest, FilledOrdersStillUseAnId) {
   OrderBook book;
   Request first = bid(Price(100), Qty(10));
-  Request second = ask(Price(100), Qty(10)); // fills #1 completely and never rests
+  Request second =
+      ask(Price(100), Qty(10));  // fills #1 completely and never rests
   Request third = bid(Price(100), Qty(10));
 
   submit(book, first);
@@ -250,14 +277,16 @@ TEST(OrderBookIdTest, EachBookCountsSeparately) {
   EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(1), order}}));
 }
 
-// ---- Resting ----------------------------------------------------------------------------------
+// ---- Resting
+// ----------------------------------------------------------------------------------
 
 TEST(OrderBookRestingTest, BidOnEmptyBookRests) {
   OrderBook book;
   Request order = bid(Price(100), Qty(10));
 
   EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(1), order}}));
-  EXPECT_EQ(resting(book, OrderId(1)), (RestingOrder{OrderId(1), Side::Bid, Price(100), Qty(10)}));
+  EXPECT_EQ(resting(book, OrderId(1)),
+            (RestingOrder{OrderId(1), Side::Bid, Price(100), Qty(10)}));
 }
 
 TEST(OrderBookRestingTest, AskOnEmptyBookRests) {
@@ -265,7 +294,8 @@ TEST(OrderBookRestingTest, AskOnEmptyBookRests) {
   Request order = ask(Price(100), Qty(10));
 
   EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(1), order}}));
-  EXPECT_EQ(resting(book, OrderId(1)), (RestingOrder{OrderId(1), Side::Ask, Price(100), Qty(10)}));
+  EXPECT_EQ(resting(book, OrderId(1)),
+            (RestingOrder{OrderId(1), Side::Ask, Price(100), Qty(10)}));
 }
 
 TEST(OrderBookRestingTest, BidBelowBestAskRests) {
@@ -273,7 +303,8 @@ TEST(OrderBookRestingTest, BidBelowBestAskRests) {
   Request order = bid(Price(100), Qty(10));
 
   EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(3), order}}));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Bid, Price(100), Qty(10)}));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Bid, Price(100), Qty(10)}));
   EXPECT_EQ(book.orders().size(), 3u);
 }
 
@@ -282,23 +313,26 @@ TEST(OrderBookRestingTest, AskAboveBestBidRests) {
   Request order = ask(Price(100), Qty(10));
 
   EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(3), order}}));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Ask, Price(100), Qty(10)}));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Ask, Price(100), Qty(10)}));
   EXPECT_EQ(book.orders().size(), 3u);
 }
 
-// ---- Matching ---------------------------------------------------------------------------------
+// ---- Matching
+// ---------------------------------------------------------------------------------
 
 TEST(OrderBookMatchingTest, BidFillsEqualSizeAsk) {
   OrderBook book = spread_book();
   Request order = bid(Price(101), Qty(10));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(3), order},
-    Filled{OrderId(3), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(2), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(3)},
-    Fulfilled{OrderId(2)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(3), order},
+                Filled{OrderId(3), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(2), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(3)},
+                Fulfilled{OrderId(2)},
+            }));
   EXPECT_FALSE(book.orders().contains(OrderId(2)));
   EXPECT_FALSE(book.orders().contains(OrderId(3)));
   EXPECT_TRUE(book.orders().contains(OrderId(1)));
@@ -308,13 +342,14 @@ TEST(OrderBookMatchingTest, AskFillsEqualSizeBid) {
   OrderBook book = spread_book();
   Request order = ask(Price(99), Qty(10));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(3), order},
-    Filled{OrderId(3), Side::Ask, Price(99), Qty(10)},
-    Filled{OrderId(1), Side::Bid, Price(99), Qty(10)},
-    Fulfilled{OrderId(3)},
-    Fulfilled{OrderId(1)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(3), order},
+                Filled{OrderId(3), Side::Ask, Price(99), Qty(10)},
+                Filled{OrderId(1), Side::Bid, Price(99), Qty(10)},
+                Fulfilled{OrderId(3)},
+                Fulfilled{OrderId(1)},
+            }));
   EXPECT_FALSE(book.orders().contains(OrderId(1)));
   EXPECT_FALSE(book.orders().contains(OrderId(3)));
   EXPECT_TRUE(book.orders().contains(OrderId(2)));
@@ -324,13 +359,15 @@ TEST(OrderBookMatchingTest, SmallerBidPartiallyFillsAsk) {
   OrderBook book = spread_book();
   Request order = bid(Price(101), Qty(4));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(3), order},
-    Filled{OrderId(3), Side::Bid, Price(101), Qty(4)},
-    Filled{OrderId(2), Side::Ask, Price(101), Qty(4)},
-    Fulfilled{OrderId(3)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(2)), (RestingOrder{OrderId(2), Side::Ask, Price(101), Qty(6)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(3), order},
+                Filled{OrderId(3), Side::Bid, Price(101), Qty(4)},
+                Filled{OrderId(2), Side::Ask, Price(101), Qty(4)},
+                Fulfilled{OrderId(3)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(2)),
+            (RestingOrder{OrderId(2), Side::Ask, Price(101), Qty(6)}));
   EXPECT_FALSE(book.orders().contains(OrderId(3)));
 }
 
@@ -338,13 +375,15 @@ TEST(OrderBookMatchingTest, SmallerAskPartiallyFillsBid) {
   OrderBook book = spread_book();
   Request order = ask(Price(99), Qty(4));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(3), order},
-    Filled{OrderId(3), Side::Ask, Price(99), Qty(4)},
-    Filled{OrderId(1), Side::Bid, Price(99), Qty(4)},
-    Fulfilled{OrderId(3)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(1)), (RestingOrder{OrderId(1), Side::Bid, Price(99), Qty(6)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(3), order},
+                Filled{OrderId(3), Side::Ask, Price(99), Qty(4)},
+                Filled{OrderId(1), Side::Bid, Price(99), Qty(4)},
+                Fulfilled{OrderId(3)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(1)),
+            (RestingOrder{OrderId(1), Side::Bid, Price(99), Qty(6)}));
   EXPECT_FALSE(book.orders().contains(OrderId(3)));
 }
 
@@ -352,112 +391,124 @@ TEST(OrderBookMatchingTest, LargerBidFillsAskAndRestsRemainder) {
   OrderBook book = spread_book();
   Request order = bid(Price(101), Qty(15));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(3), order},
-    Filled{OrderId(3), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(2), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(2)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(3), order},
+                Filled{OrderId(3), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(2), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(2)},
+            }));
   EXPECT_FALSE(book.orders().contains(OrderId(2)));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Bid, Price(101), Qty(5)}));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Bid, Price(101), Qty(5)}));
 }
 
 TEST(OrderBookMatchingTest, LargerAskFillsBidAndRestsRemainder) {
   OrderBook book = spread_book();
   Request order = ask(Price(99), Qty(15));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(3), order},
-    Filled{OrderId(3), Side::Ask, Price(99), Qty(10)},
-    Filled{OrderId(1), Side::Bid, Price(99), Qty(10)},
-    Fulfilled{OrderId(1)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(3), order},
+                Filled{OrderId(3), Side::Ask, Price(99), Qty(10)},
+                Filled{OrderId(1), Side::Bid, Price(99), Qty(10)},
+                Fulfilled{OrderId(1)},
+            }));
   EXPECT_FALSE(book.orders().contains(OrderId(1)));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Ask, Price(99), Qty(5)}));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Ask, Price(99), Qty(5)}));
 }
 
 TEST(OrderBookMatchingTest, BidTradesAtRestingAskPrice) {
   OrderBook book = spread_book();
   Request order = bid(Price(105), Qty(10));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(3), order},
-    Filled{OrderId(3), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(2), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(3)},
-    Fulfilled{OrderId(2)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(3), order},
+                Filled{OrderId(3), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(2), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(3)},
+                Fulfilled{OrderId(2)},
+            }));
 }
 
 TEST(OrderBookMatchingTest, AskTradesAtRestingBidPrice) {
   OrderBook book = spread_book();
   Request order = ask(Price(95), Qty(10));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(3), order},
-    Filled{OrderId(3), Side::Ask, Price(99), Qty(10)},
-    Filled{OrderId(1), Side::Bid, Price(99), Qty(10)},
-    Fulfilled{OrderId(3)},
-    Fulfilled{OrderId(1)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(3), order},
+                Filled{OrderId(3), Side::Ask, Price(99), Qty(10)},
+                Filled{OrderId(1), Side::Bid, Price(99), Qty(10)},
+                Fulfilled{OrderId(3)},
+                Fulfilled{OrderId(1)},
+            }));
 }
 
 TEST(OrderBookMatchingTest, PartiallyFilledOrderCanBeFilledAgain) {
   OrderBook book = spread_book();
-  submit(book, bid(Price(101), Qty(4))); // #3; #2 has 6 left
+  submit(book, bid(Price(101), Qty(4)));  // #3; #2 has 6 left
   Request order = bid(Price(101), Qty(6));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(4), order},
-    Filled{OrderId(4), Side::Bid, Price(101), Qty(6)},
-    Filled{OrderId(2), Side::Ask, Price(101), Qty(6)},
-    Fulfilled{OrderId(4)},
-    Fulfilled{OrderId(2)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(4), order},
+                Filled{OrderId(4), Side::Bid, Price(101), Qty(6)},
+                Filled{OrderId(2), Side::Ask, Price(101), Qty(6)},
+                Fulfilled{OrderId(4)},
+                Fulfilled{OrderId(2)},
+            }));
   EXPECT_FALSE(book.orders().contains(OrderId(2)));
 }
 
 TEST(OrderBookMatchingTest, RestedRemainderMatchesLaterOrders) {
   OrderBook book = spread_book();
-  submit(book, bid(Price(101), Qty(15))); // #3 fills #2, rests 5 @ 101
+  submit(book, bid(Price(101), Qty(15)));  // #3 fills #2, rests 5 @ 101
   Request order = ask(Price(101), Qty(5));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(4), order},
-    Filled{OrderId(4), Side::Ask, Price(101), Qty(5)},
-    Filled{OrderId(3), Side::Bid, Price(101), Qty(5)},
-    Fulfilled{OrderId(4)},
-    Fulfilled{OrderId(3)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(4), order},
+                Filled{OrderId(4), Side::Ask, Price(101), Qty(5)},
+                Filled{OrderId(3), Side::Bid, Price(101), Qty(5)},
+                Fulfilled{OrderId(4)},
+                Fulfilled{OrderId(3)},
+            }));
 }
 
 TEST(OrderBookMatchingTest, FullyFilledOrderNoLongerMatches) {
   OrderBook book = spread_book();
-  submit(book, bid(Price(101), Qty(10))); // #3 fills #2 exactly
+  submit(book, bid(Price(101), Qty(10)));  // #3 fills #2 exactly
   Request order = bid(Price(101), Qty(10));
 
   EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(4), order}}));
-  EXPECT_EQ(resting(book, OrderId(4)), (RestingOrder{OrderId(4), Side::Bid, Price(101), Qty(10)}));
+  EXPECT_EQ(resting(book, OrderId(4)),
+            (RestingOrder{OrderId(4), Side::Bid, Price(101), Qty(10)}));
 }
 
 TEST(OrderBookMatchingTest, BidSweepsAsksBestPriceFirst) {
   OrderBook book = deep_book();
   Request order = bid(Price(102), Qty(20));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
-    Fulfilled{OrderId(5)},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(6)},
-    Filled{OrderId(9), Side::Bid, Price(102), Qty(5)},
-    Filled{OrderId(7), Side::Ask, Price(102), Qty(5)},
-    Fulfilled{OrderId(9)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(7)), (RestingOrder{OrderId(7), Side::Ask, Price(102), Qty(5)}));
-  EXPECT_EQ(resting(book, OrderId(8)), (RestingOrder{OrderId(8), Side::Ask, Price(103), Qty(20)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
+                Fulfilled{OrderId(5)},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(6)},
+                Filled{OrderId(9), Side::Bid, Price(102), Qty(5)},
+                Filled{OrderId(7), Side::Ask, Price(102), Qty(5)},
+                Fulfilled{OrderId(9)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(7)),
+            (RestingOrder{OrderId(7), Side::Ask, Price(102), Qty(5)}));
+  EXPECT_EQ(resting(book, OrderId(8)),
+            (RestingOrder{OrderId(8), Side::Ask, Price(103), Qty(20)}));
   EXPECT_FALSE(book.orders().contains(OrderId(9)));
 }
 
@@ -465,20 +516,23 @@ TEST(OrderBookMatchingTest, AskSweepsBidsBestPriceFirst) {
   OrderBook book = deep_book();
   Request order = ask(Price(99), Qty(20));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
-    Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
-    Fulfilled{OrderId(1)},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
-    Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
-    Fulfilled{OrderId(2)},
-    Filled{OrderId(9), Side::Ask, Price(99), Qty(5)},
-    Filled{OrderId(3), Side::Bid, Price(99), Qty(5)},
-    Fulfilled{OrderId(9)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(5)}));
-  EXPECT_EQ(resting(book, OrderId(4)), (RestingOrder{OrderId(4), Side::Bid, Price(98), Qty(20)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
+                Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
+                Fulfilled{OrderId(1)},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
+                Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
+                Fulfilled{OrderId(2)},
+                Filled{OrderId(9), Side::Ask, Price(99), Qty(5)},
+                Filled{OrderId(3), Side::Bid, Price(99), Qty(5)},
+                Fulfilled{OrderId(9)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(5)}));
+  EXPECT_EQ(resting(book, OrderId(4)),
+            (RestingOrder{OrderId(4), Side::Bid, Price(98), Qty(20)}));
   EXPECT_FALSE(book.orders().contains(OrderId(9)));
 }
 
@@ -486,79 +540,94 @@ TEST(OrderBookMatchingTest, BidSweepStopsAtLimitPrice) {
   OrderBook book = deep_book();
   Request order = bid(Price(101), Qty(20));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
-    Fulfilled{OrderId(5)},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(6)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(9)), (RestingOrder{OrderId(9), Side::Bid, Price(101), Qty(5)}));
-  EXPECT_EQ(resting(book, OrderId(7)), (RestingOrder{OrderId(7), Side::Ask, Price(102), Qty(10)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
+                Fulfilled{OrderId(5)},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(6)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(9)),
+            (RestingOrder{OrderId(9), Side::Bid, Price(101), Qty(5)}));
+  EXPECT_EQ(resting(book, OrderId(7)),
+            (RestingOrder{OrderId(7), Side::Ask, Price(102), Qty(10)}));
 }
 
 TEST(OrderBookMatchingTest, AskSweepStopsAtLimitPrice) {
   OrderBook book = deep_book();
   Request order = ask(Price(100), Qty(20));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
-    Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
-    Fulfilled{OrderId(1)},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
-    Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
-    Fulfilled{OrderId(2)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(9)), (RestingOrder{OrderId(9), Side::Ask, Price(100), Qty(5)}));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(10)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
+                Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
+                Fulfilled{OrderId(1)},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
+                Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
+                Fulfilled{OrderId(2)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(9)),
+            (RestingOrder{OrderId(9), Side::Ask, Price(100), Qty(5)}));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(10)}));
 }
 
-// ---- Time priority ----------------------------------------------------------------------------
+// ---- Time priority
+// ----------------------------------------------------------------------------
 
 TEST(OrderBookTimePriorityTest, EarlierBidAtSamePriceFillsFirst) {
   OrderBook book = deep_book();
   Request order = ask(Price(100), Qty(3));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(3)},
-    Filled{OrderId(1), Side::Bid, Price(100), Qty(3)},
-    Fulfilled{OrderId(9)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(1)), (RestingOrder{OrderId(1), Side::Bid, Price(100), Qty(2)}));
-  EXPECT_EQ(resting(book, OrderId(2)), (RestingOrder{OrderId(2), Side::Bid, Price(100), Qty(10)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(3)},
+                Filled{OrderId(1), Side::Bid, Price(100), Qty(3)},
+                Fulfilled{OrderId(9)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(1)),
+            (RestingOrder{OrderId(1), Side::Bid, Price(100), Qty(2)}));
+  EXPECT_EQ(resting(book, OrderId(2)),
+            (RestingOrder{OrderId(2), Side::Bid, Price(100), Qty(10)}));
 }
 
 TEST(OrderBookTimePriorityTest, EarlierAskAtSamePriceFillsFirst) {
   OrderBook book = deep_book();
   Request order = bid(Price(101), Qty(3));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(3)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(3)},
-    Fulfilled{OrderId(9)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(5)), (RestingOrder{OrderId(5), Side::Ask, Price(101), Qty(2)}));
-  EXPECT_EQ(resting(book, OrderId(6)), (RestingOrder{OrderId(6), Side::Ask, Price(101), Qty(10)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(3)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(3)},
+                Fulfilled{OrderId(9)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(5)),
+            (RestingOrder{OrderId(5), Side::Ask, Price(101), Qty(2)}));
+  EXPECT_EQ(resting(book, OrderId(6)),
+            (RestingOrder{OrderId(6), Side::Ask, Price(101), Qty(10)}));
 }
 
 TEST(OrderBookTimePriorityTest, PartiallyFilledOrderKeepsItsPlace) {
   OrderBook book = deep_book();
-  submit(book, ask(Price(100), Qty(3))); // #9; #1 has 2 left
+  submit(book, ask(Price(100), Qty(3)));  // #9; #1 has 2 left
   Request order = ask(Price(100), Qty(2));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(10), order},
-    Filled{OrderId(10), Side::Ask, Price(100), Qty(2)},
-    Filled{OrderId(1), Side::Bid, Price(100), Qty(2)},
-    Fulfilled{OrderId(10)},
-    Fulfilled{OrderId(1)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(2)), (RestingOrder{OrderId(2), Side::Bid, Price(100), Qty(10)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(10), order},
+                Filled{OrderId(10), Side::Ask, Price(100), Qty(2)},
+                Filled{OrderId(1), Side::Bid, Price(100), Qty(2)},
+                Fulfilled{OrderId(10)},
+                Fulfilled{OrderId(1)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(2)),
+            (RestingOrder{OrderId(2), Side::Bid, Price(100), Qty(10)}));
 }
 
 TEST(OrderBookTimePriorityTest, NewOrderJoinsBackOfLevel) {
@@ -566,17 +635,20 @@ TEST(OrderBookTimePriorityTest, NewOrderJoinsBackOfLevel) {
   rest(book, OrderId(3), bid(Price(99), Qty(10)));
   Request order = ask(Price(99), Qty(10));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(4), order},
-    Filled{OrderId(4), Side::Ask, Price(99), Qty(10)},
-    Filled{OrderId(1), Side::Bid, Price(99), Qty(10)},
-    Fulfilled{OrderId(4)},
-    Fulfilled{OrderId(1)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(10)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(4), order},
+                Filled{OrderId(4), Side::Ask, Price(99), Qty(10)},
+                Filled{OrderId(1), Side::Bid, Price(99), Qty(10)},
+                Fulfilled{OrderId(4)},
+                Fulfilled{OrderId(1)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(10)}));
 }
 
-// ---- Cancelling -------------------------------------------------------------------------------
+// ---- Cancelling
+// -------------------------------------------------------------------------------
 
 TEST(OrderBookCancelTest, CancelRemovesRestingOrder) {
   OrderBook book = spread_book();
@@ -592,7 +664,8 @@ TEST(OrderBookCancelTest, CancelledOrderNoLongerMatches) {
   Request order = bid(Price(101), Qty(10));
 
   EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(3), order}}));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Bid, Price(101), Qty(10)}));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Bid, Price(101), Qty(10)}));
 }
 
 TEST(OrderBookCancelTest, CancelKeepsOrderOfRemainingOrdersAtLevel) {
@@ -600,17 +673,18 @@ TEST(OrderBookCancelTest, CancelKeepsOrderOfRemainingOrdersAtLevel) {
   submit(book, Cancel{OrderId(1)});
   Request order = ask(Price(100), Qty(3));
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(3)},
-    Filled{OrderId(2), Side::Bid, Price(100), Qty(3)},
-    Fulfilled{OrderId(9)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(3)},
+                Filled{OrderId(2), Side::Bid, Price(100), Qty(3)},
+                Fulfilled{OrderId(9)},
+            }));
 }
 
 TEST(OrderBookCancelTest, CancelPartiallyFilledOrderRemovesRemainder) {
   OrderBook book = spread_book();
-  submit(book, bid(Price(101), Qty(4))); // #2 has 6 left
+  submit(book, bid(Price(101), Qty(4)));  // #2 has 6 left
 
   EXPECT_EQ(submit(book, Cancel{OrderId(2)}), (Events{Cancelled{OrderId(2)}}));
   EXPECT_FALSE(book.orders().contains(OrderId(2)));
@@ -620,16 +694,18 @@ TEST(OrderBookCancelTest, CancelUnknownIdIsRejected) {
   OrderBook book = spread_book();
   Request cancel = Cancel{OrderId(99)};
 
-  EXPECT_EQ(submit(book, cancel), (Events{Rejected{cancel, Rejected::Reason::OrderIdNotFound}}));
+  EXPECT_EQ(submit(book, cancel),
+            (Events{Rejected{cancel, Rejected::Reason::OrderIdNotFound}}));
   EXPECT_EQ(book.orders(), spread_book().orders());
 }
 
 TEST(OrderBookCancelTest, CancelFilledOrderIsRejected) {
   OrderBook book = spread_book();
-  submit(book, bid(Price(101), Qty(10))); // fills #2
+  submit(book, bid(Price(101), Qty(10)));  // fills #2
   Request cancel = Cancel{OrderId(2)};
 
-  EXPECT_EQ(submit(book, cancel), (Events{Rejected{cancel, Rejected::Reason::OrderIdNotFound}}));
+  EXPECT_EQ(submit(book, cancel),
+            (Events{Rejected{cancel, Rejected::Reason::OrderIdNotFound}}));
 }
 
 TEST(OrderBookCancelTest, CancelTwiceIsRejected) {
@@ -637,71 +713,78 @@ TEST(OrderBookCancelTest, CancelTwiceIsRejected) {
   submit(book, Cancel{OrderId(1)});
   Request cancel = Cancel{OrderId(1)};
 
-  EXPECT_EQ(submit(book, cancel), (Events{Rejected{cancel, Rejected::Reason::OrderIdNotFound}}));
+  EXPECT_EQ(submit(book, cancel),
+            (Events{Rejected{cancel, Rejected::Reason::OrderIdNotFound}}));
 }
 
-// ---- Market orders ----------------------------------------------------------------------------
+// ---- Market orders
+// ----------------------------------------------------------------------------
 
 TEST(OrderBookMarketOrderTest, BidFillsAcrossLevels) {
   OrderBook book = deep_book();
   Request order = NewMarket{Side::Bid, Qty(20), MarketTif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
-    Fulfilled{OrderId(5)},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(6)},
-    Filled{OrderId(9), Side::Bid, Price(102), Qty(5)},
-    Filled{OrderId(7), Side::Ask, Price(102), Qty(5)},
-    Fulfilled{OrderId(9)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(7)), (RestingOrder{OrderId(7), Side::Ask, Price(102), Qty(5)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
+                Fulfilled{OrderId(5)},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(6)},
+                Filled{OrderId(9), Side::Bid, Price(102), Qty(5)},
+                Filled{OrderId(7), Side::Ask, Price(102), Qty(5)},
+                Fulfilled{OrderId(9)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(7)),
+            (RestingOrder{OrderId(7), Side::Ask, Price(102), Qty(5)}));
 }
 
 TEST(OrderBookMarketOrderTest, AskFillsAcrossLevels) {
   OrderBook book = deep_book();
   Request order = NewMarket{Side::Ask, Qty(20), MarketTif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
-    Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
-    Fulfilled{OrderId(1)},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
-    Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
-    Fulfilled{OrderId(2)},
-    Filled{OrderId(9), Side::Ask, Price(99), Qty(5)},
-    Filled{OrderId(3), Side::Bid, Price(99), Qty(5)},
-    Fulfilled{OrderId(9)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(5)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
+                Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
+                Fulfilled{OrderId(1)},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
+                Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
+                Fulfilled{OrderId(2)},
+                Filled{OrderId(9), Side::Ask, Price(99), Qty(5)},
+                Filled{OrderId(3), Side::Bid, Price(99), Qty(5)},
+                Fulfilled{OrderId(9)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(5)}));
 }
 
 TEST(OrderBookMarketOrderTest, RemainderIsCancelledWhenSideRunsOut) {
   OrderBook book = deep_book();
   Request order = NewMarket{Side::Bid, Qty(50), MarketTif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
-    Fulfilled{OrderId(5)},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(6)},
-    Filled{OrderId(9), Side::Bid, Price(102), Qty(10)},
-    Filled{OrderId(7), Side::Ask, Price(102), Qty(10)},
-    Fulfilled{OrderId(7)},
-    Filled{OrderId(9), Side::Bid, Price(103), Qty(20)},
-    Filled{OrderId(8), Side::Ask, Price(103), Qty(20)},
-    Fulfilled{OrderId(8)},
-    Cancelled{OrderId(9)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
+                Fulfilled{OrderId(5)},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(6)},
+                Filled{OrderId(9), Side::Bid, Price(102), Qty(10)},
+                Filled{OrderId(7), Side::Ask, Price(102), Qty(10)},
+                Fulfilled{OrderId(7)},
+                Filled{OrderId(9), Side::Bid, Price(103), Qty(20)},
+                Filled{OrderId(8), Side::Ask, Price(103), Qty(20)},
+                Fulfilled{OrderId(8)},
+                Cancelled{OrderId(9)},
+            }));
   EXPECT_FALSE(book.orders().contains(OrderId(9)));
-  EXPECT_EQ(book.orders().size(), 4u); // only the bids are left
+  EXPECT_EQ(book.orders().size(), 4u);  // only the bids are left
 }
 
 TEST(OrderBookMarketOrderTest, OrderAgainstEmptySideIsCancelled) {
@@ -709,7 +792,8 @@ TEST(OrderBookMarketOrderTest, OrderAgainstEmptySideIsCancelled) {
   rest(book, OrderId(1), bid(Price(99), Qty(10)));
   Request order = NewMarket{Side::Bid, Qty(10), MarketTif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(2), order}, Cancelled{OrderId(2)}}));
+  EXPECT_EQ(submit(book, order),
+            (Events{Accepted{OrderId(2), order}, Cancelled{OrderId(2)}}));
   EXPECT_FALSE(book.orders().contains(OrderId(2)));
 }
 
@@ -717,140 +801,161 @@ TEST(OrderBookMarketOrderTest, FokFillsWhenEnoughQtyRests) {
   OrderBook book = deep_book();
   Request order = NewMarket{Side::Bid, Qty(20), MarketTif::FillOrKill};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
-    Fulfilled{OrderId(5)},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(6)},
-    Filled{OrderId(9), Side::Bid, Price(102), Qty(5)},
-    Filled{OrderId(7), Side::Ask, Price(102), Qty(5)},
-    Fulfilled{OrderId(9)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
+                Fulfilled{OrderId(5)},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(6)},
+                Filled{OrderId(9), Side::Bid, Price(102), Qty(5)},
+                Filled{OrderId(7), Side::Ask, Price(102), Qty(5)},
+                Fulfilled{OrderId(9)},
+            }));
 }
 
 TEST(OrderBookMarketOrderTest, FokIsKilledWhenNotEnoughQtyRests) {
   OrderBook book = deep_book();
-  Request order = NewMarket{Side::Bid, Qty(46), MarketTif::FillOrKill}; // 45 rests
+  Request order =
+      NewMarket{Side::Bid, Qty(46), MarketTif::FillOrKill};  // 45 rests
 
-  EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(9), order}, Cancelled{OrderId(9)}}));
+  EXPECT_EQ(submit(book, order),
+            (Events{Accepted{OrderId(9), order}, Cancelled{OrderId(9)}}));
   EXPECT_EQ(book.orders(), deep_book().orders());
 }
 
-// ---- Immediate or cancel ----------------------------------------------------------------------
+// ---- Immediate or cancel
+// ----------------------------------------------------------------------
 
 TEST(OrderBookImmediateOrCancelTest, FullyFilledOrderIsFulfilled) {
   OrderBook book = deep_book();
-  Request order = NewLimit{Side::Bid, Price(102), Qty(20), Tif::ImmediateOrCancel};
+  Request order =
+      NewLimit{Side::Bid, Price(102), Qty(20), Tif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
-    Fulfilled{OrderId(5)},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(6)},
-    Filled{OrderId(9), Side::Bid, Price(102), Qty(5)},
-    Filled{OrderId(7), Side::Ask, Price(102), Qty(5)},
-    Fulfilled{OrderId(9)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
+                Fulfilled{OrderId(5)},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(6)},
+                Filled{OrderId(9), Side::Bid, Price(102), Qty(5)},
+                Filled{OrderId(7), Side::Ask, Price(102), Qty(5)},
+                Fulfilled{OrderId(9)},
+            }));
 }
 
 TEST(OrderBookImmediateOrCancelTest, BidRemainderIsCancelledNotRested) {
   OrderBook book = deep_book();
-  Request order = NewLimit{Side::Bid, Price(101), Qty(20), Tif::ImmediateOrCancel};
+  Request order =
+      NewLimit{Side::Bid, Price(101), Qty(20), Tif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
-    Fulfilled{OrderId(5)},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(6)},
-    Cancelled{OrderId(9)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
+                Fulfilled{OrderId(5)},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(6)},
+                Cancelled{OrderId(9)},
+            }));
   EXPECT_FALSE(book.orders().contains(OrderId(9)));
-  EXPECT_EQ(resting(book, OrderId(7)), (RestingOrder{OrderId(7), Side::Ask, Price(102), Qty(10)}));
+  EXPECT_EQ(resting(book, OrderId(7)),
+            (RestingOrder{OrderId(7), Side::Ask, Price(102), Qty(10)}));
 }
 
 TEST(OrderBookImmediateOrCancelTest, AskRemainderIsCancelledNotRested) {
   OrderBook book = deep_book();
-  Request order = NewLimit{Side::Ask, Price(100), Qty(20), Tif::ImmediateOrCancel};
+  Request order =
+      NewLimit{Side::Ask, Price(100), Qty(20), Tif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
-    Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
-    Fulfilled{OrderId(1)},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
-    Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
-    Fulfilled{OrderId(2)},
-    Cancelled{OrderId(9)},
-  }));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
+                Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
+                Fulfilled{OrderId(1)},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
+                Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
+                Fulfilled{OrderId(2)},
+                Cancelled{OrderId(9)},
+            }));
   EXPECT_FALSE(book.orders().contains(OrderId(9)));
-  EXPECT_EQ(resting(book, OrderId(3)), (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(10)}));
+  EXPECT_EQ(resting(book, OrderId(3)),
+            (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(10)}));
 }
 
 TEST(OrderBookImmediateOrCancelTest, OrderWithNoMatchIsCancelled) {
   OrderBook book = spread_book();
-  Request order = NewLimit{Side::Bid, Price(100), Qty(10), Tif::ImmediateOrCancel};
+  Request order =
+      NewLimit{Side::Bid, Price(100), Qty(10), Tif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(3), order}, Cancelled{OrderId(3)}}));
+  EXPECT_EQ(submit(book, order),
+            (Events{Accepted{OrderId(3), order}, Cancelled{OrderId(3)}}));
   EXPECT_EQ(book.orders(), spread_book().orders());
 }
 
-// ---- Fill or kill -----------------------------------------------------------------------------
+// ---- Fill or kill
+// -----------------------------------------------------------------------------
 
 TEST(OrderBookFillOrKillTest, BidFillsWhenQtyWithinLimitExactlyMatches) {
   OrderBook book = deep_book();
   Request order = NewLimit{Side::Bid, Price(102), Qty(25), Tif::FillOrKill};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
-    Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
-    Fulfilled{OrderId(5)},
-    Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
-    Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
-    Fulfilled{OrderId(6)},
-    Filled{OrderId(9), Side::Bid, Price(102), Qty(10)},
-    Filled{OrderId(7), Side::Ask, Price(102), Qty(10)},
-    Fulfilled{OrderId(9)},
-    Fulfilled{OrderId(7)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(8)), (RestingOrder{OrderId(8), Side::Ask, Price(103), Qty(20)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(5)},
+                Filled{OrderId(5), Side::Ask, Price(101), Qty(5)},
+                Fulfilled{OrderId(5)},
+                Filled{OrderId(9), Side::Bid, Price(101), Qty(10)},
+                Filled{OrderId(6), Side::Ask, Price(101), Qty(10)},
+                Fulfilled{OrderId(6)},
+                Filled{OrderId(9), Side::Bid, Price(102), Qty(10)},
+                Filled{OrderId(7), Side::Ask, Price(102), Qty(10)},
+                Fulfilled{OrderId(9)},
+                Fulfilled{OrderId(7)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(8)),
+            (RestingOrder{OrderId(8), Side::Ask, Price(103), Qty(20)}));
 }
 
 TEST(OrderBookFillOrKillTest, AskFillsWhenQtyWithinLimitExactlyMatches) {
   OrderBook book = deep_book();
   Request order = NewLimit{Side::Ask, Price(99), Qty(25), Tif::FillOrKill};
 
-  EXPECT_EQ(submit(book, order), (Events{
-    Accepted{OrderId(9), order},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
-    Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
-    Fulfilled{OrderId(1)},
-    Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
-    Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
-    Fulfilled{OrderId(2)},
-    Filled{OrderId(9), Side::Ask, Price(99), Qty(10)},
-    Filled{OrderId(3), Side::Bid, Price(99), Qty(10)},
-    Fulfilled{OrderId(9)},
-    Fulfilled{OrderId(3)},
-  }));
-  EXPECT_EQ(resting(book, OrderId(4)), (RestingOrder{OrderId(4), Side::Bid, Price(98), Qty(20)}));
+  EXPECT_EQ(submit(book, order),
+            (Events{
+                Accepted{OrderId(9), order},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(5)},
+                Filled{OrderId(1), Side::Bid, Price(100), Qty(5)},
+                Fulfilled{OrderId(1)},
+                Filled{OrderId(9), Side::Ask, Price(100), Qty(10)},
+                Filled{OrderId(2), Side::Bid, Price(100), Qty(10)},
+                Fulfilled{OrderId(2)},
+                Filled{OrderId(9), Side::Ask, Price(99), Qty(10)},
+                Filled{OrderId(3), Side::Bid, Price(99), Qty(10)},
+                Fulfilled{OrderId(9)},
+                Fulfilled{OrderId(3)},
+            }));
+  EXPECT_EQ(resting(book, OrderId(4)),
+            (RestingOrder{OrderId(4), Side::Bid, Price(98), Qty(20)}));
 }
 
-// The book has more than enough ask qty in total, but only 25 at or below the limit price.
+// The book has more than enough ask qty in total, but only 25 at or below the
+// limit price.
 TEST(OrderBookFillOrKillTest, BidIsKilledWhenNotEnoughQtyWithinLimit) {
   OrderBook book = deep_book();
   Request order = NewLimit{Side::Bid, Price(102), Qty(26), Tif::FillOrKill};
 
-  EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(9), order}, Cancelled{OrderId(9)}}));
+  EXPECT_EQ(submit(book, order),
+            (Events{Accepted{OrderId(9), order}, Cancelled{OrderId(9)}}));
   EXPECT_EQ(book.orders(), deep_book().orders());
 }
 
@@ -858,7 +963,8 @@ TEST(OrderBookFillOrKillTest, AskIsKilledWhenNotEnoughQtyWithinLimit) {
   OrderBook book = deep_book();
   Request order = NewLimit{Side::Ask, Price(99), Qty(26), Tif::FillOrKill};
 
-  EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(9), order}, Cancelled{OrderId(9)}}));
+  EXPECT_EQ(submit(book, order),
+            (Events{Accepted{OrderId(9), order}, Cancelled{OrderId(9)}}));
   EXPECT_EQ(book.orders(), deep_book().orders());
 }
 
@@ -866,17 +972,20 @@ TEST(OrderBookFillOrKillTest, OrderWithNoMatchIsKilled) {
   OrderBook book = spread_book();
   Request order = NewLimit{Side::Bid, Price(100), Qty(10), Tif::FillOrKill};
 
-  EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(3), order}, Cancelled{OrderId(3)}}));
+  EXPECT_EQ(submit(book, order),
+            (Events{Accepted{OrderId(3), order}, Cancelled{OrderId(3)}}));
   EXPECT_EQ(book.orders(), spread_book().orders());
 }
 
-// ---- Validation -------------------------------------------------------------------------------
+// ---- Validation
+// -------------------------------------------------------------------------------
 
 TEST(OrderBookValidationTest, ZeroQtyLimitIsRejected) {
   OrderBook book = spread_book();
-  Request order = bid(Price(101), Qty(0)); // would cross if it had qty
+  Request order = bid(Price(101), Qty(0));  // would cross if it had qty
 
-  EXPECT_EQ(submit(book, order), (Events{Rejected{order, Rejected::Reason::ZeroQty}}));
+  EXPECT_EQ(submit(book, order),
+            (Events{Rejected{order, Rejected::Reason::ZeroQty}}));
   EXPECT_EQ(book.orders(), spread_book().orders());
 }
 
@@ -884,6 +993,7 @@ TEST(OrderBookValidationTest, ZeroQtyMarketIsRejected) {
   OrderBook book = spread_book();
   Request order = NewMarket{Side::Bid, Qty(0), MarketTif::ImmediateOrCancel};
 
-  EXPECT_EQ(submit(book, order), (Events{Rejected{order, Rejected::Reason::ZeroQty}}));
+  EXPECT_EQ(submit(book, order),
+            (Events{Rejected{order, Rejected::Reason::ZeroQty}}));
   EXPECT_EQ(book.orders(), spread_book().orders());
 }

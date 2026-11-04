@@ -10,4 +10,4 @@ namespace tpz::dsa {
 
 [[nodiscard]] int placeholder() noexcept;
 
-} // namespace tpz::dsa
+}  // namespace tpz::dsa

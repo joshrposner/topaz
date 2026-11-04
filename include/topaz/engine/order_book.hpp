@@ -1,17 +1,17 @@
 #pragma once
 
-#include "../types.hpp"
-#include "event.hpp"
-
+#include <list>
 #include <map>
 #include <unordered_map>
-#include <list>
+
+#include "../types.hpp"
+#include "event.hpp"
 
 namespace tpz::eng {
 
 /// @brief Order book with matching engine
 class OrderBook {
-public:
+ public:
   /// @brief Creates an empty order book
   OrderBook() noexcept;
 
@@ -27,7 +27,7 @@ public:
   /// @brief Gets a map of order ID -> order
   const std::unordered_map<OrderId, RestingOrder>& orders() const;
 
-private:
+ private:
   std::unordered_map<OrderId, RestingOrder> orders_;
   std::map<Price, std::list<OrderId>> sell_orders_;
   std::map<Price, std::list<OrderId>, std::greater<Price>> buy_orders_;
@@ -50,7 +50,8 @@ private:
   bool can_fulfill(Side side, Price limit, Qty qty);
 
   /// Helper to match an order. Called by `dispatch`.
-  Qty sweep(OrderId id, Side side, Price limit, Qty qty, std::vector<Event>* out);
+  Qty sweep(OrderId id, Side side, Price limit, Qty qty,
+            std::vector<Event>* out);
 
   /// Helper to rest the remainder of an order. Called by `dispatch`.
   void rest(OrderId id, Side side, Price price, Qty rem);
@@ -59,4 +60,4 @@ private:
   void emit(std::vector<Event>* out, Event e);
 };
 
-} // namespace tpz::eng
+}  // namespace tpz::eng

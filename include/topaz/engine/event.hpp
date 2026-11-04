@@ -5,7 +5,7 @@
 namespace tpz::eng {
 
 struct Accepted {
-  OrderId id; // assigned by the book
+  OrderId id;  // assigned by the book
   Request request;
 
   friend bool operator==(const Accepted&, const Accepted&) = default;
@@ -45,4 +45,4 @@ struct Rejected {
 
 using Event = std::variant<Accepted, Filled, Fulfilled, Cancelled, Rejected>;
 
-} // namespace tpz::eng
+}  // namespace tpz::eng
