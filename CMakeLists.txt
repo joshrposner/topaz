@@ -161,6 +161,7 @@ target_sources(topaz
   PRIVATE
     src/engine/placeholder.cpp
     src/engine/order_book.cpp
+    src/engine/match.cpp
     src/dsa/placeholder.cpp
     src/net/placeholder.cpp
   PUBLIC

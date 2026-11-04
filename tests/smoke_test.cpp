@@ -8,9 +8,9 @@
 
 using std::nullopt;
 
-TEST(Smoke, BuildsAndRuns) { EXPECT_EQ(1 + 1, 2); }
+TEST(SmokeTest, BuildsAndRuns) { EXPECT_EQ(1 + 1, 2); }
 
-TEST(Smoke, LinksAgainstTopaz) {
+TEST(SmokeTest, LinksAgainstTopaz) {
   EXPECT_EQ(tpz::dsa::placeholder(), 0);
   EXPECT_EQ(tpz::eng::placeholder(), 0);
   EXPECT_EQ(tpz::net::placeholder(), 0);

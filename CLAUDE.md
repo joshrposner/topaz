@@ -125,3 +125,4 @@ CMake options (all prefixed `TPZ_`): `TPZ_BUILD_TESTS`, `TPZ_BUILD_BENCH`, `TPZ_
 - When proposing a design change, state the expected effect on latency or memory and how to measure it.
 - Record significant design decisions in `docs/decisions.md` (date, decision, reasoning, alternatives considered).
 - With the exception of editing .cpp/.hpp files or CMakeLists.txt, do not run commands that change the state of the repo, such as: building the project yourself, running tests yourself, git adding/commiting/pushing yourself, installing packages yourself, etc. If you're not sure, suggest the command for me to run instead.
+- Do not go beyond the scope of a question. This means things like pointing out bugs after you've answered a question unrealted to bugs.

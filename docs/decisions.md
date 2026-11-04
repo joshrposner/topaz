@@ -119,3 +119,38 @@ The id goes in `Accepted` rather than a separate event. Every new order gets bot
 - *Separate `IdAssigned` event*: see above. It would always come paired with `Accepted`, and a stream with one but not the other would be possible.
 - *`submit()` returns the id*: only the direct caller would see it. Event consumers (the GUI, market data, Phase 2's recorded event logs) need the id to make sense of later `Filled` and `Cancelled` events, so it has to be in the event stream.
 - *A counter shared by every book* (a `static` member): ids would depend on how many orders other books in the process had seen, which breaks determinism and makes tests depend on the order they run in.
+
+### One shared sweep; time in force is handled around it (2026-11-03)
+
+**Decision:** Every new order runs through the same few private helpers, defined in `src/engine/match.cpp`:
+
+- `dispatch(NewLimit)` / `dispatch(NewMarket)` validate the order, assign an id, and pick what happens based on time in force.
+- `sweep(id, side, limit, qty, out)` walks the opposite side best price first, FIFO within each level, and returns the unfilled quantity.
+- `can_fulfill(side, limit, qty)` checks, without changing the book, whether the opposite side has enough quantity at `limit` or better.
+- `rest(id, side, price, rem)` adds a remainder to the book.
+
+Time in force only decides what happens before and after the sweep:
+
+| TIF | Before `sweep` | After `sweep` |
+|---|---|---|
+| GTC | none | `rest` the remainder |
+| IOC | none | `Cancelled` if there's a remainder |
+| FOK | `can_fulfill`; `Cancelled` with no fills if it fails | none (the order always fills completely) |
+
+A market order is a limit order whose limit never stops the sweep: the highest possible `Price` for a buy, the lowest for a sell. The two sides share code through runtime `switch`es on `Side` inside the helpers, plus a `crosses()` helper so the comparison direction is written in one place.
+
+Each helper has a fixed set of events it may emit: `dispatch` emits `Accepted`, `Rejected`, and the TIF `Cancelled`; `sweep` emits `Filled` and `Fulfilled`; `can_fulfill` and `rest` emit nothing. `submit`, `cancel`, and `gen_id` stay in `order_book.cpp`.
+
+**Reasoning:** An order's behaviour depends on three choices: side, limit vs. market, and TIF. Each one changes a different part of the algorithm. Side picks which book is walked and which way prices compare. Limit vs. market changes only when the walk stops. TIF changes only what happens before and after the walk. The fill loop itself is the same for every combination, so it's written once. A matching rule (the trade happens at the resting order's price, empty levels are removed, FIFO within a level) then lives in one place and gets tested once.
+
+New TIFs or order types in Phase 3 (post-only, modify) become another step around `sweep`, not another set of copies of the fill loop.
+
+FOK checks first so that a failed FOK leaves the book exactly as it was. The alternative is to sweep and then undo the fills.
+
+Expected cost: one `switch` on TIF per order, plus `switch`es on `Side`. Those cost one well-predicted branch per order or per price level, not per fill. This hasn't been measured. Phase 4's baseline benchmarks will show whether it matters.
+
+**Alternatives considered:**
+- *One function per combination* (`match_limit_sell_gtc`, `match_market_buy_fok`, ... — 10 in total): every function is self-contained and has no branches on side or TIF. But the fill loop would be copied 10 times, so a matching fix has to be made in 10 places. The number of copies would also grow as Phase 3 adds order types.
+- *Template the helpers on `Side`* (or on the book's map type): removes the runtime `switch` on side, and the two sides still share source. Not done for now because the `switch` is simpler and its cost hasn't been measured. Worth trying in Phase 5 if profiles show the side branch.
+- *A separate sweep for market orders* (no limit, or `std::optional<Price>`): makes "no limit" explicit rather than a sentinel value. But it's either a second copy of the loop or an extra check on every level, for a case the sentinel already handles.
+- *FOK by sweeping and then rolling back*: avoids walking the book twice when the order fills. But undoing fills means restoring resting quantities and price levels, and taking back events already emitted, which is more complex and error-prone than a read-only check first.
