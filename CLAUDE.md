@@ -126,3 +126,4 @@ CMake options (all prefixed `TPZ_`): `TPZ_BUILD_TESTS`, `TPZ_BUILD_BENCH`, `TPZ_
 - Record significant design decisions in `docs/decisions.md` (date, decision, reasoning, alternatives considered).
 - With the exception of editing .cpp/.hpp files or CMakeLists.txt, do not run commands that change the state of the repo, such as: building the project yourself, running tests yourself, git adding/commiting/pushing yourself, installing packages yourself, etc. If you're not sure, suggest the command for me to run instead.
 - Do not go beyond the scope of a question. This means things like pointing out bugs after you've answered a question unrealted to bugs.
+- Don't hint at fixes for bugs in my code unless I ask for one. That includes indirect hints like "once X does Y, this will pass" or pointing at the line to look at. If I ask why something fails, explain what's going wrong without saying how to fix it.

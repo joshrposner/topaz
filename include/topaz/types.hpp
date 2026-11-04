@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <variant>
 
 namespace tpz {
@@ -169,4 +170,14 @@ struct std::hash<tpz::StrongInt<Tag>> {
   std::size_t operator()(tpz::StrongInt<Tag> v) const noexcept {
     return std::hash<typename tpz::StrongInt<Tag>::Rep>{}(v.val());
   }
+};
+
+template <typename Tag>
+struct std::numeric_limits<tpz::StrongInt<Tag>>
+    : std::numeric_limits<typename tpz::StrongInt<Tag>::Rep> {
+  using T = tpz::StrongInt<Tag>;
+  using R = std::numeric_limits<typename T::Rep>;
+  static constexpr T min() noexcept { return T(R::min()); }
+  static constexpr T max() noexcept { return T(R::max()); }
+  static constexpr T lowest() noexcept { return T(R::lowest()); }
 };

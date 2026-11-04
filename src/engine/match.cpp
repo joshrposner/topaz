@@ -81,7 +81,7 @@ void OrderBook::rest(OrderId id, Side side, Price price, Qty rem) {
       sell_orders_[price].push_back(id);
       break;
     case Side::Bid:
-      sell_orders_[price].push_back(id);
+      buy_orders_[price].push_back(id);
       break;
   }
 }
@@ -145,7 +145,7 @@ Qty sweep_book(Book& book, std::unordered_map<OrderId, RestingOrder>& orders,
         // sufficient quantity, incoming order fulfilled, resting order
         // partially filled (or resting order fulfilled if equal qtys)
         emit_event(out, Filled{id, side, price, qty});
-        emit_event(out, Filled{order.id, side, price, qty});
+        emit_event(out, Filled{order.id, order.side, price, qty});
         order.qty -= qty;
         qty = Qty(0);
         emit_event(out, Fulfilled{id});
@@ -159,7 +159,7 @@ Qty sweep_book(Book& book, std::unordered_map<OrderId, RestingOrder>& orders,
         // insufficient quantity, incoming order partially filled, resting order
         // fulfilled
         emit_event(out, Filled{id, side, price, order.qty});
-        emit_event(out, Filled{order.id, side, price, order.qty});
+        emit_event(out, Filled{order.id, order.side, price, order.qty});
         qty -= order.qty;
         order.qty = Qty(0);
         emit_event(out, Fulfilled{order.id});

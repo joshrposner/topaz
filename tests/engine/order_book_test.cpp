@@ -9,35 +9,31 @@
 
 // Contract these tests assume:
 //   - Each book assigns ids to the new orders it accepts, starting at 1 and
-//   counting up in
-//     submission order. Rejected orders and cancels don't use an id.
+//     counting up in submission order. Rejected orders and cancels don't use
+//     an id.
 //   - A new order emits Accepted{id, request} first. One that can't be
-//   processed emits only
-//     Rejected{request, reason}.
+//     processed emits only Rejected{request, reason}.
 //   - Each match emits Filled for the incoming order, then Filled for the
-//   resting order. Both are
-//     at the resting order's price, and each carries that order's own id and
-//     side.
+//     resting order. Both are at the resting order's price, and each carries
+//     that order's own id and side.
 //   - Right after a match's two Filled events, each order whose remaining qty
-//   reached zero gets
-//     Fulfilled: the incoming order first, then the resting one.
+//     reached zero gets Fulfilled: the incoming order first, then the resting
+//     one.
 //   - The unfilled remainder of a GTC limit order rests without emitting
-//   anything else.
+//     anything else.
 //   - Market orders match at any price, best price first. IOC and FOK orders,
-//   limit or market,
-//     never rest.
+//     limit or market, never rest.
 //   - An IOC order ends with Fulfilled if it filled completely. Otherwise its
-//   last event is
-//     Cancelled{id} for the remainder, including when nothing filled.
+//     last event is Cancelled{id} for the remainder, including when nothing
+//     filled.
 //   - An FOK order either fills completely, with the same events as any other
-//   full fill, or emits
-//     only Accepted, Cancelled{id} and leaves the book untouched. Only resting
-//     quantity within its limit price counts toward filling it.
+//     full fill, or emits only Accepted, Cancelled{id} and leaves the book
+//     untouched. Only resting quantity within its limit price counts toward
+//     filling it.
 //   - A new order with zero qty emits only Rejected{request, ZeroQty}.
 //   - Cancel emits only Cancelled{id}. Cancelling an id that isn't resting
-//   (unknown, already
-//     filled, or already cancelled) emits only Rejected{cancel,
-//     OrderIdNotFound}.
+//     (unknown, already filled, or already cancelled) emits only
+//     Rejected{cancel, OrderIdNotFound}.
 //   - orders() holds exactly the resting orders, each with its remaining qty.
 //
 // Not covered yet: negative qty.
@@ -157,6 +153,20 @@ std::ostream& operator<<(std::ostream& os, const Rejected& e) {
   return os << "Rejected{" << e.request << ", " << e.reason << '}';
 }
 
+// Prints event lists as { A, B, ... }. GoogleTest's built-in std::variant
+// printer adds the alternative's type name and index to every element, and it
+// can't be overridden per element (it's a class specialization that never
+// looks for PrintTo), so this overrides printing of the whole vector instead.
+void PrintTo(const std::vector<Event>& events, std::ostream* os) {
+  *os << "{ ";
+  for (bool first = true; const Event& e : events) {
+    if (!first) *os << ", ";
+    first = false;
+    std::visit([&](const auto& alt) { *os << alt; }, e);
+  }
+  *os << " }";
+}
+
 }  // namespace tpz::eng
 
 namespace {
@@ -230,8 +240,7 @@ TEST(OrderBookTest, NewOrderBookIsEmpty) {
   EXPECT_TRUE(book.orders().empty());
 }
 
-// ---- Order ids
-// --------------------------------------------------------------------------------
+// ---- Order ids --------------------------------------------------------------
 
 TEST(OrderBookIdTest, FirstOrderGetsIdOne) {
   OrderBook book;
@@ -243,8 +252,8 @@ TEST(OrderBookIdTest, FirstOrderGetsIdOne) {
 TEST(OrderBookIdTest, FilledOrdersStillUseAnId) {
   OrderBook book;
   Request first = bid(Price(100), Qty(10));
-  Request second =
-      ask(Price(100), Qty(10));  // fills #1 completely and never rests
+  // Fills #1 completely and never rests.
+  Request second = ask(Price(100), Qty(10));
   Request third = bid(Price(100), Qty(10));
 
   submit(book, first);
@@ -277,8 +286,7 @@ TEST(OrderBookIdTest, EachBookCountsSeparately) {
   EXPECT_EQ(submit(book, order), (Events{Accepted{OrderId(1), order}}));
 }
 
-// ---- Resting
-// ----------------------------------------------------------------------------------
+// ---- Resting ----------------------------------------------------------------
 
 TEST(OrderBookRestingTest, BidOnEmptyBookRests) {
   OrderBook book;
@@ -318,8 +326,7 @@ TEST(OrderBookRestingTest, AskAboveBestBidRests) {
   EXPECT_EQ(book.orders().size(), 3u);
 }
 
-// ---- Matching
-// ---------------------------------------------------------------------------------
+// ---- Matching ---------------------------------------------------------------
 
 TEST(OrderBookMatchingTest, BidFillsEqualSizeAsk) {
   OrderBook book = spread_book();
@@ -576,8 +583,7 @@ TEST(OrderBookMatchingTest, AskSweepStopsAtLimitPrice) {
             (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(10)}));
 }
 
-// ---- Time priority
-// ----------------------------------------------------------------------------
+// ---- Time priority ----------------------------------------------------------
 
 TEST(OrderBookTimePriorityTest, EarlierBidAtSamePriceFillsFirst) {
   OrderBook book = deep_book();
@@ -647,8 +653,7 @@ TEST(OrderBookTimePriorityTest, NewOrderJoinsBackOfLevel) {
             (RestingOrder{OrderId(3), Side::Bid, Price(99), Qty(10)}));
 }
 
-// ---- Cancelling
-// -------------------------------------------------------------------------------
+// ---- Cancelling -------------------------------------------------------------
 
 TEST(OrderBookCancelTest, CancelRemovesRestingOrder) {
   OrderBook book = spread_book();
@@ -717,8 +722,7 @@ TEST(OrderBookCancelTest, CancelTwiceIsRejected) {
             (Events{Rejected{cancel, Rejected::Reason::OrderIdNotFound}}));
 }
 
-// ---- Market orders
-// ----------------------------------------------------------------------------
+// ---- Market orders ----------------------------------------------------------
 
 TEST(OrderBookMarketOrderTest, BidFillsAcrossLevels) {
   OrderBook book = deep_book();
@@ -818,16 +822,15 @@ TEST(OrderBookMarketOrderTest, FokFillsWhenEnoughQtyRests) {
 
 TEST(OrderBookMarketOrderTest, FokIsKilledWhenNotEnoughQtyRests) {
   OrderBook book = deep_book();
-  Request order =
-      NewMarket{Side::Bid, Qty(46), MarketTif::FillOrKill};  // 45 rests
+  // Only 45 rests on the ask side.
+  Request order = NewMarket{Side::Bid, Qty(46), MarketTif::FillOrKill};
 
   EXPECT_EQ(submit(book, order),
             (Events{Accepted{OrderId(9), order}, Cancelled{OrderId(9)}}));
   EXPECT_EQ(book.orders(), deep_book().orders());
 }
 
-// ---- Immediate or cancel
-// ----------------------------------------------------------------------
+// ---- Immediate or cancel ----------------------------------------------------
 
 TEST(OrderBookImmediateOrCancelTest, FullyFilledOrderIsFulfilled) {
   OrderBook book = deep_book();
@@ -901,8 +904,7 @@ TEST(OrderBookImmediateOrCancelTest, OrderWithNoMatchIsCancelled) {
   EXPECT_EQ(book.orders(), spread_book().orders());
 }
 
-// ---- Fill or kill
-// -----------------------------------------------------------------------------
+// ---- Fill or kill -----------------------------------------------------------
 
 TEST(OrderBookFillOrKillTest, BidFillsWhenQtyWithinLimitExactlyMatches) {
   OrderBook book = deep_book();
@@ -977,8 +979,7 @@ TEST(OrderBookFillOrKillTest, OrderWithNoMatchIsKilled) {
   EXPECT_EQ(book.orders(), spread_book().orders());
 }
 
-// ---- Validation
-// -------------------------------------------------------------------------------
+// ---- Validation -------------------------------------------------------------
 
 TEST(OrderBookValidationTest, ZeroQtyLimitIsRejected) {
   OrderBook book = spread_book();
