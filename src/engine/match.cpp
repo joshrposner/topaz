@@ -1,20 +1,21 @@
 #include <limits>
+#include <print>
 #include <topaz/defs.hpp>
 #include <topaz/engine/order_book.hpp>
 #include <utility>
 
 namespace tpz::eng {
 
-// Responsible only for emission of `Rejected`/`Accepted` and `Cancelled` for
+// Responsible only for emission of `Rejected`/`Accepted` and `Canceled` for
 // IOC/FOK
 void OrderBook::dispatch(NewLimit order, std::vector<Event>* out) {
   if (order.qty == Qty(0)) {
-    emit(out, Rejected{order, Rejected::Reason::ZeroQty});
+    emit(out, Rejected(order, Rejected::Reason::ZeroQty));
     return;
   }
 
   OrderId id = gen_id();
-  emit(out, Accepted{id, order});
+  emit(out, Accepted(id, order));
 
   switch (order.tif) {
     case Tif::GoodTilCancel: {
@@ -24,12 +25,12 @@ void OrderBook::dispatch(NewLimit order, std::vector<Event>* out) {
     }
     case Tif::ImmediateOrCancel: {
       Qty rem = sweep(id, order.side, order.price, order.qty, out);
-      if (rem > Qty(0)) emit(out, Cancelled{id});
+      if (rem > Qty(0)) emit(out, Canceled(id));
       break;
     }
     case Tif::FillOrKill: {
       if (!can_fulfill(order.side, order.price, order.qty)) {
-        emit(out, Cancelled{id});
+        emit(out, Canceled(id));
         break;
       }
       sweep(id, order.side, order.price, order.qty, out);
@@ -38,16 +39,16 @@ void OrderBook::dispatch(NewLimit order, std::vector<Event>* out) {
   }
 }
 
-// Responsible only for emission of `Rejected`/`Accepted` and `Cancelled` for
+// Responsible only for emission of `Rejected`/`Accepted` and `Canceled` for
 // IOC/FOK
 void OrderBook::dispatch(NewMarket order, std::vector<Event>* out) {
   if (order.qty == Qty(0)) {
-    emit(out, Rejected{order, Rejected::Reason::ZeroQty});
+    emit(out, Rejected(order, Rejected::Reason::ZeroQty));
     return;
   }
 
   OrderId id = gen_id();
-  emit(out, Accepted{id, order});
+  emit(out, Accepted(id, order));
 
   Price price_max = std::numeric_limits<Price>::max();
   Price price_min = std::numeric_limits<Price>::min();
@@ -56,12 +57,12 @@ void OrderBook::dispatch(NewMarket order, std::vector<Event>* out) {
   switch (order.tif) {
     case MarketTif::ImmediateOrCancel: {
       Qty rem = sweep(id, order.side, sentinel_price, order.qty, out);
-      if (rem > Qty(0)) emit(out, Cancelled{id});
+      if (rem > Qty(0)) emit(out, Canceled(id));
       break;
     }
     case MarketTif::FillOrKill: {
       if (!can_fulfill(order.side, sentinel_price, order.qty)) {
-        emit(out, Cancelled{id});
+        emit(out, Canceled(id));
         break;
       }
       sweep(id, order.side, sentinel_price, order.qty, out);
@@ -74,7 +75,7 @@ void OrderBook::dispatch(NewMarket order, std::vector<Event>* out) {
 void OrderBook::rest(OrderId id, Side side, Price price, Qty rem) {
   if (rem <= Qty(0)) return;
 
-  RestingOrder rest{id, side, price, rem};
+  RestingOrder rest(id, side, price, rem);
   orders_[id] = rest;
   switch (side) {
     case Side::Ask:
@@ -144,13 +145,13 @@ Qty sweep_book(Book& book, std::unordered_map<OrderId, RestingOrder>& orders,
       if (order.qty >= qty) {
         // sufficient quantity, incoming order fulfilled, resting order
         // partially filled (or resting order fulfilled if equal qtys)
-        emit_event(out, Filled{id, side, price, qty});
-        emit_event(out, Filled{order.id, order.side, price, qty});
+        emit_event(out, Filled(id, side, price, qty));
+        emit_event(out, Filled(order.id, order.side, price, qty));
         order.qty -= qty;
         qty = Qty(0);
-        emit_event(out, Fulfilled{id});
+        emit_event(out, Fulfilled(id));
         if (order.qty == Qty(0)) {
-          emit_event(out, Fulfilled{order.id});
+          emit_event(out, Fulfilled(order.id));
           orders.erase(ito);
           iti = ids.erase(iti);
         }
@@ -158,11 +159,11 @@ Qty sweep_book(Book& book, std::unordered_map<OrderId, RestingOrder>& orders,
       } else if (qty > order.qty) {
         // insufficient quantity, incoming order partially filled, resting order
         // fulfilled
-        emit_event(out, Filled{id, side, price, order.qty});
-        emit_event(out, Filled{order.id, order.side, price, order.qty});
+        emit_event(out, Filled(id, side, price, order.qty));
+        emit_event(out, Filled(order.id, order.side, price, order.qty));
         qty -= order.qty;
         order.qty = Qty(0);
-        emit_event(out, Fulfilled{order.id});
+        emit_event(out, Fulfilled(order.id));
         orders.erase(ito);
         iti = ids.erase(iti);
       }

@@ -4,7 +4,6 @@
 #include <imgui_impl_opengl3.h>
 
 #include <cstdio>
-#include <topaz/engine/placeholder.hpp>
 
 namespace {
 
@@ -60,7 +59,6 @@ int main() {
     ImGui::NewFrame();
 
     ImGui::Begin("Topaz");
-    ImGui::Text("Engine placeholder: %d", tpz::eng::placeholder());
     ImGui::Text("%.1f FPS", static_cast<double>(ImGui::GetIO().Framerate));
     ImGui::Checkbox("Show ImGui demo", &show_demo);
     ImGui::End();

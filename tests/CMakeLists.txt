@@ -15,7 +15,6 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
 add_executable(tpz_tests
-  smoke_test.cpp
   dsa/list_test.cpp
   engine/order_book_test.cpp
 )

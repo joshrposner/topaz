@@ -26,10 +26,10 @@ struct Fulfilled {
   friend bool operator==(const Fulfilled&, const Fulfilled&) = default;
 };
 
-struct Cancelled {
+struct Canceled {
   OrderId id;
 
-  friend bool operator==(const Cancelled&, const Cancelled&) = default;
+  friend bool operator==(const Canceled&, const Canceled&) = default;
 };
 
 struct Rejected {
@@ -43,6 +43,6 @@ struct Rejected {
   friend bool operator==(const Rejected&, const Rejected&) = default;
 };
 
-using Event = std::variant<Accepted, Filled, Fulfilled, Cancelled, Rejected>;
+using Event = std::variant<Accepted, Filled, Fulfilled, Canceled, Rejected>;
 
 }  // namespace tpz::eng

@@ -44,25 +44,26 @@ Goal: a simple order book using standard containers that matches limit orders co
 - [X] Determinism: why the same inputs must always produce the same outputs (replay, debugging, auditing)
 
 **Build**
-- [X] Decide where shared types (`Price`, `Qty`, `OrderId`, `Side`) live, and resolve the "Confirm" note in CLAUDE.md
-- [X] Strong types for price/qty/id (so you can't pass a `Qty` where a `Price` is expected)
-- [X] `Order` struct: id, side, price, quantity remaining
-- [ ] Naive book: e.g. `std::map<Price, std::list<Order>>` per side (think about which way each side should sort)
-- [ ] `add_limit`: match against the opposite side while it crosses, then rest the remainder
-- [ ] `cancel(id)`: needs a way to find an order by id (what's the complexity of your first attempt?)
-- [ ] Output events: `Accepted`, `Trade`/`Fill`, `Cancelled`, `Rejected` (with a reason)
-- [ ] Reject invalid input (zero qty, unknown id on cancel, duplicate id) using `std::expected`
-- [ ] Delete the `placeholder` files
+- [X] Decide where shared types (`Price`, `Qty`, `OrderId`, `Side`) live: namespace `tpz`, in `topaz/types.hpp`
+- [X] Strong types for price/qty/id (`StrongInt<Tag>` with an `explicit` constructor)
+- [X] Requests as `std::variant<NewLimit, NewMarket, Cancel>`; the book stores `RestingOrder` (id, side, price, quantity remaining)
+- [X] Naive book: `std::map<Price, std::list<OrderId>>` per side (asks ascending, bids `std::greater`) plus `std::unordered_map<OrderId, RestingOrder>`
+- [X] `submit(NewLimit)`: match against the opposite side while it crosses, then rest the remainder (shared `sweep` + `rest` helpers)
+- [X] `submit(Cancel)`: find the order by id in the hash map, then a linear search within its price level
+- [X] Output events into a caller-owned `std::vector<Event>`: `Accepted`, `Filled`, `Fulfilled`, `Cancelled`, `Rejected` (with a reason)
+- [X] Reject invalid input (zero qty, unknown id on cancel) with a `Rejected` event; duplicate ids are impossible because the book assigns ids
+- [X] Delete the `placeholder` files
 
 **Tests** (`tests/engine/`): one test per rule, written before or alongside the code
-- [ ] Non-crossing order rests at the correct level
-- [ ] Crossing order fills fully against one resting order
-- [ ] Partial fill: incoming larger than resting, and resting larger than incoming
-- [ ] Sweep across multiple price levels, best price first
-- [ ] FIFO at the same price level
-- [ ] Trade price is the *resting* order's price, not the incoming one's
-- [ ] Cancel removes the order; cancelling a filled/unknown order is rejected
-- [ ] Empty levels are removed; best bid/ask update correctly
+- [X] Non-crossing order rests at the correct level
+- [X] Crossing order fills fully against one resting order
+- [X] Partial fill: incoming larger than resting, and resting larger than incoming
+- [X] Sweep across multiple price levels, best price first
+- [X] FIFO at the same price level
+- [X] Trade price is the *resting* order's price, not the incoming one's
+- [X] Cancel removes the order; cancelling a filled/unknown order is rejected
+- [X] Book-assigned ids: start at 1, count per book, rejected orders and cancels don't use one
+- [X] Empty levels are removed; best bid/ask update correctly
 
 **DSA used**: balanced BST (`std::map`), linked list, hash map (id → order)
 
@@ -88,16 +89,16 @@ Goal: confidence that later optimizations don't break anything.
 ## Phase 3: More order types and operations
 
 **Learn**
-- [ ] **Market order**: what to do when there isn't enough liquidity (cancel the remainder vs. reject)
-- [ ] **Time in force**: GTC (good till cancel), **IOC** (immediate or cancel: fill what you can, cancel the rest), **FOK** (fill or kill: all or nothing)
+- [X] **Market order**: what to do when there isn't enough liquidity. Decided: the client picks via `MarketTif` (IOC cancels the remainder, FOK kills the whole order); market + GTC can't be represented
+- [X] **Time in force**: GTC (good till cancel), **IOC** (immediate or cancel: fill what you can, cancel the rest), **FOK** (fill or kill: all or nothing)
 - [ ] **Post-only**: reject (or reprice) if it would trade immediately; used by makers
 - [ ] **Modify / cancel-replace**: when does an order *lose* its time priority? (Commonly: a price change or quantity increase loses it, a quantity decrease keeps it.)
 - [ ] *(Optional)* **Self-trade prevention**: don't let a trader match against their own order
 
 **Build + test each**
-- [ ] Market orders
-- [ ] IOC
-- [ ] FOK (hint: you need to check available liquidity *before* mutating the book)
+- [X] Market orders (IOC and FOK), implemented as a sweep with a sentinel limit price
+- [X] IOC (limit and market)
+- [X] FOK (limit and market), with a read-only `can_fulfill` check *before* mutating the book
 - [ ] Post-only
 - [ ] Modify with correct priority rules
 - [ ] Record your priority-rule choices in `docs/decisions.md`

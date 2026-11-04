@@ -1,0 +1,13 @@
+{
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build/release"
+    ],
+    "clangd.fallbackFlags": [
+        "-std=c++23",
+        "-I${workspaceFolder}/include"
+    ],
+    "cmake.configureOnOpen": false,
+    "cmake.configureOnEdit": false,
+    "cmake.automaticReconfigure": false
+}

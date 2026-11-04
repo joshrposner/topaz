@@ -159,23 +159,17 @@ add_library(topaz::topaz ALIAS topaz)
 
 target_sources(topaz
   PRIVATE
-    src/engine/placeholder.cpp
     src/engine/order_book.cpp
     src/engine/match.cpp
-    src/dsa/placeholder.cpp
-    src/net/placeholder.cpp
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS include
     FILES
       include/topaz/defs.hpp
       include/topaz/types.hpp
-      include/topaz/engine/placeholder.hpp
       include/topaz/engine/order_book.hpp
       include/topaz/engine/event.hpp
-      include/topaz/dsa/placeholder.hpp
       include/topaz/dsa/list.hpp
-      include/topaz/net/placeholder.hpp
 )
 
 target_include_directories(topaz

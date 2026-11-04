@@ -3,6 +3,7 @@
 #include <list>
 #include <map>
 #include <unordered_map>
+#include <vector>
 
 #include "../types.hpp"
 #include "event.hpp"
@@ -26,6 +27,12 @@ class OrderBook {
 
   /// @brief Gets a map of order ID -> order
   const std::unordered_map<OrderId, RestingOrder>& orders() const;
+
+  /// @brief Gets an L2 snapshot of one side of the book.
+  /// @return Every price level on @p side, best price first, each with the
+  /// total remaining qty resting at it. The best bid or ask is the first
+  /// element.
+  [[nodiscard]] std::vector<Level> levels(Side side) const;
 
  private:
   std::unordered_map<OrderId, RestingOrder> orders_;

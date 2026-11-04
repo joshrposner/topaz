@@ -191,12 +191,12 @@ class List {
   /// @brief Returns an iterator to the first element.
   /// @return Iterator to the first element, or end() if the list is empty.
   Iterator begin() {
-    return Iterator{head_.get(), !head_ ? nullptr : &head_->val_};
+    return Iterator(head_.get(), !head_ ? nullptr : &head_->val_);
   }
 
   /// @brief Returns the past-the-end iterator.
   /// @return Iterator one past the last element. It must not be dereferenced.
-  Iterator end() { return Iterator{nullptr, nullptr}; }
+  Iterator end() { return Iterator(nullptr, nullptr); }
 
   /// @brief Inserts a copy of @p val at the front of the list.
   /// @param val Value to copy into the new first element.
@@ -285,7 +285,7 @@ class List {
       pop_back();  // this executes size_--
       next_it = end();
     } else {
-      next_it = Iterator{it.node_->next_.get(), &it.node_->next_->val_};
+      next_it = Iterator(it.node_->next_.get(), &it.node_->next_->val_);
       it.node_->next_->prev_ = it.node_->prev_;
       it.node_->prev_->next_ = std::move(it.node_->next_);
       size_--;

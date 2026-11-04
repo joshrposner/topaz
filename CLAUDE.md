@@ -90,6 +90,11 @@ CMake options (all prefixed `TPZ_`): `TPZ_BUILD_TESTS`, `TPZ_BUILD_BENCH`, `TPZ_
 - Use well-supported C++23 features freely: `std::expected` for error handling on the hot path, `std::byteswap` for wire encoding, `std::unreachable`, `std::to_underlying`, deducing `this`, `std::print` (outside latency-sensitive code).
 - Before using a C++23 library feature with uneven support (e.g. `std::flat_map`, `std::start_lifetime_as`), confirm it works on all three compilers.
 - Prices and quantities are integer types (fixed-point ticks), never floating point.
+- Initialize with parentheses, including aggregates (C++20 parenthesized aggregate init): `Price(10125)`, `Level(Price(10126), Qty(5))`, `NewLimit(Side::Bid, Price(100), Qty(10), Tif::GoodTilCancel)`. Braces only where parentheses can't work:
+  - container/`std::initializer_list` construction: `Levels{Level(...), Level(...)}`
+  - empty initialization, to avoid the most vexing parse: `Level x{}`, not `Level x()`
+  - designated initializers: `Level{.price = ..., .qty = ...}`
+- Parentheses don't reject narrowing conversions, so give fields strong types or enums rather than raw integers where a mix-up is possible.
 - Prefer `std::span`, `std::string_view`, and value types over raw pointers and ownership ambiguity.
 
 ### Naming (Rust-style)

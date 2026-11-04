@@ -12,7 +12,7 @@ namespace tpz {
 ///
 /// Prevents mixing up values that share a representation, such as passing a
 /// price where a quantity is expected. Construction from a raw integer is
-/// explicit, so every value is labeled at the call site: `Price{10125}`, not
+/// explicit, so every value is labeled at the call site: `Price(10125)`, not
 /// `10125`. Supports comparison only; there is no arithmetic yet.
 ///
 /// All members are `constexpr`, so values can be used in constant expressions
@@ -153,6 +153,14 @@ struct RestingOrder {
             ///< original order's.
 
   friend bool operator==(const RestingOrder&, const RestingOrder&) = default;
+};
+
+/// @brief One price level of one side of the book, as in L2 market data.
+struct Level {
+  Price price;
+  Qty qty;  ///< Total remaining qty of the orders resting at @c price.
+
+  friend bool operator==(const Level&, const Level&) = default;
 };
 
 /// @brief Helper utility to match variants
