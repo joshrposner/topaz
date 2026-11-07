@@ -34,7 +34,7 @@ struct Canceled {
 
 struct Rejected {
   enum class Reason {
-    ZeroQty,
+    InvalidQty,
     OrderIdNotFound,
   };
   Request request;

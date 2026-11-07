@@ -9,8 +9,8 @@ namespace tpz::eng {
 // Responsible only for emission of `Rejected`/`Accepted` and `Canceled` for
 // IOC/FOK
 void OrderBook::dispatch(NewLimit order, std::vector<Event>* out) {
-  if (order.qty == Qty(0)) {
-    emit(out, Rejected(order, Rejected::Reason::ZeroQty));
+  if (order.qty <= Qty(0)) {
+    emit(out, Rejected(order, Rejected::Reason::InvalidQty));
     return;
   }
 
@@ -42,8 +42,8 @@ void OrderBook::dispatch(NewLimit order, std::vector<Event>* out) {
 // Responsible only for emission of `Rejected`/`Accepted` and `Canceled` for
 // IOC/FOK
 void OrderBook::dispatch(NewMarket order, std::vector<Event>* out) {
-  if (order.qty == Qty(0)) {
-    emit(out, Rejected(order, Rejected::Reason::ZeroQty));
+  if (order.qty <= Qty(0)) {
+    emit(out, Rejected(order, Rejected::Reason::InvalidQty));
     return;
   }
 

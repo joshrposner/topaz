@@ -16,7 +16,7 @@ The repo contains:
 ## Status
 
 <!-- Update this as the project moves. Keep it short. -->
-Early development. Build system and test/benchmark scaffolding in place. Current focus: core order book data structures and price-time priority matching.
+Phase 1 complete, naive book implemented. Current focus: test infrastructure
 
 Progress is tracked in [`docs/roadmap.md`](docs/roadmap.md). Check it to see which phase is in progress and pitch explanations to match. Earlier phases deliberately use naive standard containers, so don't suggest Phase 5 optimizations while Phases 1–4 are still open.
 
