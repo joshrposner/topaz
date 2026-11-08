@@ -33,7 +33,7 @@ The binary may be under `build/tests/Release/` with the Visual Studio generator.
 
 ## Adding a test
 
-1. Create `tests/<component>/<name>_test.cpp`, mirroring `include/topaz/`. For example, `include/topaz/engine/order_book.hpp` is tested in `tests/engine/order_book_test.cpp`.
+1. Create `tests/<component>/<name>_test.cpp`, mirroring `include/topaz/`. For example, `include/topaz/dsa/list.hpp` is tested in `tests/dsa/list_test.cpp`, and core engine headers directly in `include/topaz/` are tested directly in `tests/` (`include/topaz/order_book.hpp` → `tests/order_book_test.cpp`).
 2. **Add the file to `add_executable(tpz_tests ...)`** in `tests/CMakeLists.txt`. Sources are listed explicitly with no globbing, so an unlisted file is silently skipped.
 3. Rebuild and run.
 
@@ -56,7 +56,7 @@ Use a fixture when several tests share setup:
 class OrderBookTest : public ::testing::Test {
 protected:
     void SetUp() override { /* runs before each test */ }
-    tpz::eng::OrderBook book_;
+    tpz::OrderBook book_;
 };
 
 TEST_F(OrderBookTest, EmptyBookHasNoBestBid) {

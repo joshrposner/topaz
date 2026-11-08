@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <topaz/defs.hpp>
-#include <topaz/engine/order_book.hpp>
+#include <topaz/order_book.hpp>
 #include <utility>
 
-namespace tpz::eng {
+namespace tpz {
 
 OrderBook::OrderBook() noexcept : next_id_(OrderId(1)) {}
 
@@ -105,4 +105,4 @@ void OrderBook::emit(std::vector<Event>* out, Event e) {
   if (out) out->push_back(e);
 }
 
-}  // namespace tpz::eng
+}  // namespace tpz

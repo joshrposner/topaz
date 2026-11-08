@@ -3,7 +3,9 @@
 #include <optional>
 #include <vector>
 
-#include <topaz/engine/order_book.hpp>
+#include <topaz/order_book.hpp>
+
+#include "common/print.hpp"
 
 // Contract these tests assume:
 //   - Each book assigns ids to the new orders it accepts, starting at 1 and
@@ -50,13 +52,13 @@ using tpz::Request;
 using tpz::RestingOrder;
 using tpz::Side;
 using tpz::Tif;
-using tpz::eng::Accepted;
-using tpz::eng::Canceled;
-using tpz::eng::Event;
-using tpz::eng::Filled;
-using tpz::eng::Fulfilled;
-using tpz::eng::OrderBook;
-using tpz::eng::Rejected;
+using tpz::Accepted;
+using tpz::Canceled;
+using tpz::Event;
+using tpz::Filled;
+using tpz::Fulfilled;
+using tpz::OrderBook;
+using tpz::Rejected;
 
 using Events = std::vector<Event>;
 using Levels = std::vector<Level>;

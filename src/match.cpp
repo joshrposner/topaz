@@ -1,10 +1,10 @@
 #include <limits>
 #include <print>
 #include <topaz/defs.hpp>
-#include <topaz/engine/order_book.hpp>
+#include <topaz/order_book.hpp>
 #include <utility>
 
-namespace tpz::eng {
+namespace tpz {
 
 // Responsible only for emission of `Rejected`/`Accepted` and `Canceled` for
 // IOC/FOK
@@ -202,4 +202,4 @@ Qty OrderBook::sweep(OrderId id, Side side, Price limit, Qty qty,
   std::unreachable();
 }
 
-}  // namespace tpz::eng
+}  // namespace tpz

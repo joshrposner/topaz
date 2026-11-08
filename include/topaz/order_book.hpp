@@ -5,10 +5,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../types.hpp"
-#include "event.hpp"
+#include "types.hpp"
 
-namespace tpz::eng {
+namespace tpz {
 
 /// @brief Order book with matching engine
 class OrderBook {
@@ -67,4 +66,4 @@ class OrderBook {
   void emit(std::vector<Event>* out, Event e);
 };
 
-}  // namespace tpz::eng
+}  // namespace tpz

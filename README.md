@@ -28,11 +28,11 @@ To start over, delete `build/<preset>/` (or all of `build/`).
 
 ## Example
 ```cpp
-#include <topaz/engine/order_book.hpp>
+#include <topaz/order_book.hpp>
 using namespace tpz;
 
-eng::OrderBook book;
-std::vector<eng::Event> out;
+OrderBook book;
+std::vector<Event> out;
 
 book.submit(NewLimit(Side::Ask, Price(10125), Qty(10), Tif::GoodTilCancel), out);
 // Accepted{#1}  (rests: ask 10 @ $101.25)

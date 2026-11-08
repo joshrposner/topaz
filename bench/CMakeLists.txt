@@ -21,7 +21,7 @@ FetchContent_MakeAvailable(benchmark)
 
 add_executable(tpz_bench
   smoke_bench.cpp
-  # engine/order_book_bench.cpp
+  # order_book_bench.cpp
 )
 
 target_link_libraries(tpz_bench

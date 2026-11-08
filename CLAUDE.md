@@ -8,7 +8,7 @@ Context for Claude Code (and humans) working in this repository.
 
 The repo contains:
 
-- **`tpz::eng`**: the core engine — order book, matching logic, order types, and event output.
+- **`tpz`**: the core engine — order book, matching logic, order types, and event output. Lives directly in the top-level namespace.
 - **`tpz::dsa`**: purpose-built data structures used by the engine (written from scratch, no third-party containers on the hot path).
 - **`tpz::net`**: networking layer for order entry and market data, derived from [Garnet](https://github.com/jopo86/garnet).
 - **Example app**: a Dear ImGui GUI that visualizes the book and lets you submit orders.
@@ -24,29 +24,25 @@ Progress is tracked in [`docs/roadmap.md`](docs/roadmap.md). Check it to see whi
 
 ```
 CMakeLists.txt      root build (library target: topaz / topaz::topaz)
-include/topaz/      public headers
-    engine/             tpz::eng
+include/topaz/      public headers; core engine (tpz) directly here
     dsa/                tpz::dsa
     net/                tpz::net
 src/                implementation, mirrors include/topaz/
-    engine/
     dsa/
     net/
-tests/              GoogleTest unit tests (target: tpz_tests)
+tests/              GoogleTest unit tests (target: tpz_tests), mirrors include/topaz/
     CMakeLists.txt
-    engine/             mirrors include/topaz/
     dsa/
     net/
     common/             shared test helpers/fixtures (when needed)
-bench/              Google Benchmark benchmarks (target: tpz_bench)
+bench/              Google Benchmark benchmarks (target: tpz_bench), mirrors include/topaz/
     CMakeLists.txt
-    engine/
     dsa/
 examples/gui/       Dear ImGui example app
 docs/               design notes and decisions
 ```
 
-Tests and benchmarks have no `src/` layer; `.cpp` files sit next to their `CMakeLists.txt`, grouped by component once there are more than a few.
+Tests and benchmarks have no `src/` layer. Core engine tests and benchmarks sit directly next to their `CMakeLists.txt`; side-module ones go in the matching subdirectory (`tests/dsa/`).
 
 ## Build
 
@@ -108,8 +104,8 @@ CMake options (all prefixed `TPZ_`): `TPZ_BUILD_TESTS`, `TPZ_BUILD_BENCH`, `TPZ_
 
 ### Namespaces and includes
 
-- Namespaces are abbreviated: `tpz::eng`, `tpz::dsa`, `tpz::net`.
-- Include paths use full names: `#include <topaz/engine/order_book.hpp>`. This mismatch with the namespaces is intentional; don't rename one to match the other.
+- The core engine lives directly in `tpz`; side modules get abbreviated sub-namespaces: `tpz::dsa`, `tpz::net`.
+- Directory structure matches namespaces: `tpz::OrderBook` is in `<topaz/order_book.hpp>`, `tpz::dsa::List` is in `<topaz/dsa/list.hpp>`. A new sub-namespace gets a matching subdirectory in `include/topaz/`, `src/`, `tests/`, and `bench/`.
 - No `using namespace` in headers.
 
 ### Formatting

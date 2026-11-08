@@ -163,6 +163,47 @@ struct Level {
   friend bool operator==(const Level&, const Level&) = default;
 };
 
+struct Accepted {
+  OrderId id;  // assigned by the book
+  Request request;
+
+  friend bool operator==(const Accepted&, const Accepted&) = default;
+};
+
+struct Filled {
+  OrderId id;
+  Side side;
+  Price price;
+  Qty qty;
+
+  friend bool operator==(const Filled&, const Filled&) = default;
+};
+
+struct Fulfilled {
+  OrderId id;
+
+  friend bool operator==(const Fulfilled&, const Fulfilled&) = default;
+};
+
+struct Canceled {
+  OrderId id;
+
+  friend bool operator==(const Canceled&, const Canceled&) = default;
+};
+
+struct Rejected {
+  enum class Reason {
+    InvalidQty,
+    OrderIdNotFound,
+  };
+  Request request;
+  Reason reason;
+
+  friend bool operator==(const Rejected&, const Rejected&) = default;
+};
+
+using Event = std::variant<Accepted, Filled, Fulfilled, Canceled, Rejected>;
+
 /// @brief Helper utility to match variants
 template <class... Ts>
 struct VisitHelper : Ts... {

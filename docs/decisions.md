@@ -33,6 +33,8 @@
 - *`tpz::eng` in `topaz/engine/types.hpp`*: also workable, since `net` depending on `eng` is the allowed direction. Rejected because anything that needs a `Price` would then depend on the engine.
 - *`defs.hpp` / `common.hpp`*: vague names like these tend to collect unrelated macros and helpers over time. Headers are named after what they contain, like `assert.hpp`.
 
+*Update (2026-11-07):* the engine itself has since moved into `tpz` too (see "Namespaces" below). The header split described here still applies: `types.hpp` stays separate from the engine header (`order_book.hpp`), so `net` and the GUI still don't pull in the engine just to name a price.
+
 ### `StrongInt` has an `explicit` constructor (2026-10-30)
 
 **Decision:** `StrongInt`'s constructor from `Rep` is `explicit`, so raw integers don't convert implicitly to `Price`, `Qty`, or `OrderId`.
@@ -70,7 +72,19 @@ The wire decoder still has to reject a GTC value in a market order message, but 
 - *Runtime reject in the engine*: safe and cheap (one predictable branch per market order), but it puts input validation into matching code and still leaves an invalid state representable.
 - *Treat market + GTC as IOC*: silently changes what the client asked for. Rejected because it hides client bugs.
 
-## `tpz::eng::OrderBook`
+### Events live in `types.hpp` alongside requests (2026-11-07)
+
+**Decision:** The event types (`Accepted`, `Filled`, `Fulfilled`, `Canceled`, `Rejected`, and `Event`) move from `include/topaz/event.hpp` into `include/topaz/types.hpp`, and `event.hpp` is removed.
+
+**Reasoning:** Events are shared vocabulary for the same reason requests are. `tpz::net` will encode them as execution reports and market data, and the GUI will display them, and neither should have to include the engine to do that. Requests and events are the input and output of the same interface, so they belong in the same header. `Accepted` and `Rejected` already contain a `Request`, so `event.hpp` could never be used without `types.hpp` anyway.
+
+`order_book.hpp` is still the only engine header, so `types.hpp` still doesn't pull in the book.
+
+**Alternatives considered:**
+- *Keep `event.hpp` separate*: smaller headers, and a file named after exactly what's in it. Rejected because the split was between two halves of one interface, not between unrelated things, and every user of events needed requests too.
+- *Split `types.hpp` further* (e.g. `strong_int.hpp`, `request.hpp`, `event.hpp`): worth doing if `types.hpp` grows to the point of being hard to navigate. Not yet, at around 230 lines.
+
+## `tpz::OrderBook`
 
 ### Matching is a private member of `OrderBook` (2026-10-31)
 
@@ -89,7 +103,7 @@ Matching is tested through the public `submit()` API and the events it emits, wh
 
 ### Events go into a caller-owned buffer (2026-11-01)
 
-**Decision:** `OrderBook` writes its events into a buffer the caller provides: `void submit(Request request, std::vector<Event>& out)`. The book keeps no event state of its own, it isn't templated on an event sink, and its implementation lives in `src/engine/order_book.cpp`.
+**Decision:** `OrderBook` writes its events into a buffer the caller provides: `void submit(Request request, std::vector<Event>& out)`. The book keeps no event state of its own, it isn't templated on an event sink, and its implementation lives in `src/order_book.cpp`.
 
 **Reasoning:** The engine stays plain data in, data out. Tests submit a request and compare `out` against the expected events with `EXPECT_EQ`, which is also what Phase 2's golden and differential tests need. Determinism is easy to see, because the output is just a sequence of values.
 
@@ -122,7 +136,7 @@ The id goes in `Accepted` rather than a separate event. Every new order gets bot
 
 ### One shared sweep; time in force is handled around it (2026-11-03)
 
-**Decision:** Every new order runs through the same few private helpers, defined in `src/engine/match.cpp`:
+**Decision:** Every new order runs through the same few private helpers, defined in `src/match.cpp`:
 
 - `dispatch(NewLimit)` / `dispatch(NewMarket)` validate the order, assign an id, and pick what happens based on time in force.
 - `sweep(id, side, limit, qty, out)` walks the opposite side best price first, FIFO within each level, and returns the unfilled quantity.
@@ -154,3 +168,20 @@ Expected cost: one `switch` on TIF per order, plus `switch`es on `Side`. Those c
 - *Template the helpers on `Side`* (or on the book's map type): removes the runtime `switch` on side, and the two sides still share source. Not done for now because the `switch` is simpler and its cost hasn't been measured. Worth trying in Phase 5 if profiles show the side branch.
 - *A separate sweep for market orders* (no limit, or `std::optional<Price>`): makes "no limit" explicit rather than a sentinel value. But it's either a second copy of the loop or an extra check on every level, for a case the sentinel already handles.
 - *FOK by sweeping and then rolling back*: avoids walking the book twice when the order fills. But undoing fills means restoring resting quantities and price levels, and taking back events already emitted, which is more complex and error-prone than a read-only check first.
+
+## Namespaces
+
+### The core engine lives directly in `tpz` and `include/topaz/`; `dsa` and `net` are sub-namespaces and subdirectories (2026-11-07)
+
+**Decision:** Everything that was in `tpz::eng` (`OrderBook`, the event types) moves into `tpz`. `tpz::dsa` and `tpz::net` stay as sub-namespaces. Directory structure follows: engine headers move from `include/topaz/engine/` to `include/topaz/`, with sources and tests moving up from `src/engine/` and `tests/engine/` the same way. Side modules keep their subdirectories (`include/topaz/dsa/`).
+
+**Reasoning:** The engine is what the library is for, and `dsa` and `net` are supporting modules around it. Giving all three their own sub-namespace treated them as equals, which doesn't match how they relate. The old split was also uneven: requests (`NewLimit`, `Cancel`, ...) were in `tpz` but the events they produce (`Accepted`, `Filled`, ...) were in `tpz::eng`, even though requests and events are the input and output of the same interface. With everything in `tpz`, users write `tpz::OrderBook` and `tpz::Event` next to `tpz::NewLimit`.
+
+Files move to match because the include path then tells you the namespace, and the other way round: `<topaz/order_book.hpp>` declares `tpz::OrderBook`, `<topaz/dsa/list.hpp>` declares `tpz::dsa::List`. The old `engine/` directory vs `eng` namespace was the only place they didn't match.
+
+Dependencies between modules come from which headers a file includes, not from namespaces. `types.hpp` stays a separate header from `order_book.hpp`, so the reason for keeping shared types out of the engine (`net` shouldn't have to depend on the engine) still holds.
+
+**Alternatives considered:**
+- *Keep `tpz::eng`*: every module gets its own namespace, so the layout is uniform. Rejected because it puts the engine on the same level as its helpers, and it splits requests and events across two namespaces.
+- *Move the shared types into `tpz::eng` too*: also consistent, but then the core API is still one level down, and `net` code would name engine-namespace types everywhere.
+- *Keep engine files in `engine/` directories*: keeps the engine's files grouped together. Rejected because then the directory structure no longer tells you the namespace. If the top level gets crowded later, that's a hint the engine should be split into real sub-namespaces, not just subdirectories.

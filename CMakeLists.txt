@@ -151,7 +151,7 @@ function(tpz_copy_asan_runtime target)
 endfunction()
 
 # ---------------------------------------------------------------------------
-# Library: topaz (tpz::eng, tpz::dsa, tpz::net)
+# Library: topaz (tpz, tpz::dsa, tpz::net)
 # Sources and headers are listed explicitly (no globbing).
 # ---------------------------------------------------------------------------
 add_library(topaz)
@@ -159,16 +159,15 @@ add_library(topaz::topaz ALIAS topaz)
 
 target_sources(topaz
   PRIVATE
-    src/engine/order_book.cpp
-    src/engine/match.cpp
+    src/order_book.cpp
+    src/match.cpp
   PUBLIC
     FILE_SET HEADERS
     BASE_DIRS include
     FILES
       include/topaz/defs.hpp
       include/topaz/types.hpp
-      include/topaz/engine/order_book.hpp
-      include/topaz/engine/event.hpp
+      include/topaz/order_book.hpp
       include/topaz/dsa/list.hpp
 )
 

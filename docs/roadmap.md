@@ -54,7 +54,7 @@ Goal: a simple order book using standard containers that matches limit orders co
 - [X] Reject invalid input (zero qty, unknown id on cancel) with a `Rejected` event; duplicate ids are impossible because the book assigns ids
 - [X] Delete the `placeholder` files
 
-**Tests** (`tests/engine/`): one test per rule, written before or alongside the code
+**Tests** (`tests/`): one test per rule, written before or alongside the code
 - [X] Non-crossing order rests at the correct level
 - [X] Crossing order fills fully against one resting order
 - [X] Partial fill: incoming larger than resting, and resting larger than incoming
@@ -115,7 +115,7 @@ Goal: numbers to beat before you change any data structures.
 - [ ] Why benchmarks need realistic workloads: most real orders are placed near the top of book, and most get cancelled
 - [ ] Basic profiling on your platform (Visual Studio profiler, `perf` on Linux, or Tracy)
 
-**Build** (`bench/engine/`)
+**Build** (`bench/`)
 - [ ] Workload generator: configurable mix of add/cancel/match, prices clustered near mid
 - [ ] `bm_add_non_crossing`, `bm_cancel`, `bm_match_sweep`, `bm_mixed_workload`
 - [ ] Per-operation latency histogram (custom harness or Benchmark counters)
