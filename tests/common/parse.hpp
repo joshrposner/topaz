@@ -28,11 +28,11 @@ using tpz::Rejected;
 // SELL 5 @ 102
 // BUY 8 @ 102
 // ---
-// ACCEPTED 1: SELL 5 @ 101
-// ACCEPTED 2: SELL 5 @ 102
-// ACCEPTED: BUY 8 @ 102
-// FILLED 3: BID 5 @ 101
-// FILLED 1: ASK 5 @ 101
+// ACCEPTED 1 SELL 5 @ 101
+// ACCEPTED 2 SELL 5 @ 102
+// ACCEPTED BUY 8 @ 102
+// FILLED 3 BID 5 @ 101
+// FILLED 1 ASK 5 @ 101
 // FULFILLED 1
 
 
@@ -42,7 +42,7 @@ using tpz::Rejected;
 // ---
 // ACCEPTED 1: BUY 8 @ 102
 // CANCELED 1
-// REJECTED: CANCEL 1 (NOT FOUND)
+// REJECTED CANCEL 1 (NOT FOUND)
 
 // int main() {
 //     std::string_view data = "C++;Rust;Go;Python";

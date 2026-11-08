@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include <optional>
 #include <vector>
 
 #include <topaz/order_book.hpp>
 
+#include "common/builders.hpp"
 #include "common/print.hpp"
 
 // Contract these tests assume:
@@ -65,14 +65,6 @@ using Levels = std::vector<Level>;
 
 namespace {
 
-Request bid(Price price, Qty qty) {
-  return NewLimit(Side::Bid, price, qty, Tif::GoodTilCancel);
-}
-
-Request ask(Price price, Qty qty) {
-  return NewLimit(Side::Ask, price, qty, Tif::GoodTilCancel);
-}
-
 Events submit(OrderBook& book, const Request& request) {
   Events out;
   book.submit(request, out);
@@ -127,7 +119,7 @@ OrderBook deep_book() {
   return book;
 }
 
-}  // namespace
+} // namespace
 
 TEST(OrderBookTest, NewOrderBookIsEmpty) {
   OrderBook book;
