@@ -24,3 +24,5 @@
     if (!(cond)) std::unreachable(); \
   } while (0)
 #endif
+
+#define TPZ_UNREACHABLE() TPZ_ASSERT(false && "reached unreachable code");

@@ -56,21 +56,19 @@ inline std::string repr(Rejected::Reason r) {
 }
 
 inline std::string repr(Request r) {
-  std::visit(VisitHelper(
+  return std::visit(VisitHelper(
     [](NewLimit nl) { return join(nl.side == Side::Ask ? "SELL" : "BUY", nl.qty.val(), '@', nl.price.val()); },
     [](NewMarket nm) { return join(nm.side == Side::Ask ? "SELL" : "BUY", nm.qty.val(), "MARKET"); },
     [](Cancel c) { return join("CANCEL", c.id.val()); }
   ), r);
-  std::unreachable();
 }
 
 inline std::string repr(Event e) {
-  std::visit(VisitHelper(
+  return std::visit(VisitHelper(
     [](Accepted a) { return join("ACCEPTED", a.id.val(), repr(a.request)); },
     [](Filled f) { return join("FILLED", f.id.val(), f.side == Side::Ask ? "ASK" : "BID", f.qty.val(), '@', f.price.val()); },
     [](Fulfilled ff) { return join("FULFILLED", ff.id.val()); },
     [](Canceled c) { return join("CANCELED", c.id.val()); },
     [](Rejected r) { return join("REJECTED", repr(r.request), repr(r.reason)); }
   ), e);
-  std::unreachable();
 }

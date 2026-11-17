@@ -1,0 +1,4 @@
+@book empty
+
+> BUY 10 @ 100
+ACCEPTED 1 BUY 10 @ 100

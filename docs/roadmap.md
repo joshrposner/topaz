@@ -78,7 +78,7 @@ Goal: confidence that later optimizations don't break anything.
 - [ ] **Golden/snapshot tests**: a recorded input sequence and its expected event output
 
 **Build**
-- [ ] A simple text format for scripted scenarios (e.g. `BUY 100 @ 10125 id=1`) plus a parser in `tests/common/`
+- [ ] A simple text format for scripted scenarios (e.g. `BUY 100 @ 10125`) plus a parser in `tests/common/`
 - [ ] Scenario-driven tests that compare emitted events against expected events
 - [ ] A random order-flow generator with a fixed seed (reproducible)
 - [ ] Book invariant checker: best bid < best ask, no empty levels, quantities positive, per-level totals add up
@@ -93,7 +93,6 @@ Goal: confidence that later optimizations don't break anything.
 - [X] **Time in force**: GTC (good till cancel), **IOC** (immediate or cancel: fill what you can, cancel the rest), **FOK** (fill or kill: all or nothing)
 - [ ] **Post-only**: reject (or reprice) if it would trade immediately; used by makers
 - [ ] **Modify / cancel-replace**: when does an order *lose* its time priority? (Commonly: a price change or quantity increase loses it, a quantity decrease keeps it.)
-- [ ] *(Optional)* **Self-trade prevention**: don't let a trader match against their own order
 
 **Build + test each**
 - [X] Market orders (IOC and FOK), implemented as a sweep with a sentinel limit price

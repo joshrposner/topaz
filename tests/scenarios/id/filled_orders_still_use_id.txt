@@ -1,0 +1,8 @@
+@book empty
+
+> BUY 10 @ 100
+*
+> SELL 10 @ 100 # fills 1 completely and never rests
+*
+> BUY 10 @ 100
+ACCEPTED 3 BUY 10 @ 100
