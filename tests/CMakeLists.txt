@@ -19,6 +19,7 @@ add_executable(tpz_tests
   common/parse_test.cpp
   dsa/list_test.cpp
   order_book_test.cpp
+  scenario_test.cpp
 )
 
 target_link_libraries(tpz_tests
@@ -27,6 +28,9 @@ target_link_libraries(tpz_tests
     tpz_options
     GTest::gtest_main
 )
+
+target_compile_definitions(tpz_tests PRIVATE
+  TPZ_SCENARIO_DIR="${CMAKE_CURRENT_SOURCE_DIR}/scenarios")
 
 tpz_copy_asan_runtime(tpz_tests)
 

@@ -2,7 +2,8 @@
 
 > BUY 10 @ 100
 *
-> SELL 10 @ 100 # fills 1 completely and never rests
+# fills 1 completely and never rests
+> SELL 10 @ 100 
 *
 > BUY 10 @ 100
-ACCEPTED 3 BUY 10 @ 100
+| ACCEPTED 3 BUY 10 @ 100
