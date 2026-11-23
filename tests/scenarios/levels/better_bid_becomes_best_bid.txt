@@ -1,0 +1,5 @@
+@book spread
+
+> BUY 5 @ 100
+*
+? levels BID 100x5 99x10

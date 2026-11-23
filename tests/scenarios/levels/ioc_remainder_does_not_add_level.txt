@@ -1,0 +1,6 @@
+@book deep
+
+> BUY 20 @ 101 IOC
+*
+? levels BID 100x15 99x10 98x20
+? levels ASK 102x10 103x20

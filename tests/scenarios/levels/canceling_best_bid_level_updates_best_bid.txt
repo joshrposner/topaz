@@ -1,0 +1,7 @@
+@book deep
+
+> CANCEL 1
+*
+> CANCEL 2
+*
+? levels BID 99x10 98x20

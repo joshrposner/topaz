@@ -1,0 +1,7 @@
+@book deep
+
+# only 45 rests on the ask side
+> BUY 46 MARKET FOK
+| ACCEPTED 9 BUY 46 MARKET FOK
+| CANCELED 9
+? unchanged

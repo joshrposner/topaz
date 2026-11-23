@@ -1,0 +1,4 @@
+@book deep
+
+? levels BID 100x15 99x10 98x20
+? levels ASK 101x15 102x10 103x20

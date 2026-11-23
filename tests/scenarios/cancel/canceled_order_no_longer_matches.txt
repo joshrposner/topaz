@@ -1,0 +1,7 @@
+@book spread
+
+> CANCEL 2
+*
+> BUY 10 @ 101
+| ACCEPTED 3 BUY 10 @ 101
+? order 3 BID 10 @ 101

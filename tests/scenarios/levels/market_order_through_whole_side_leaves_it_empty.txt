@@ -1,0 +1,5 @@
+@book deep
+
+> SELL 100 MARKET
+*
+? levels BID

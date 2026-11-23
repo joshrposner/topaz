@@ -1,0 +1,5 @@
+@book spread
+
+> CANCEL 99
+| REJECTED CANCEL 99 NOT FOUND
+? unchanged

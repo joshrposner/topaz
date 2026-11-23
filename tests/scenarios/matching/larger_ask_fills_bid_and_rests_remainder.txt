@@ -1,0 +1,9 @@
+@book spread
+
+> SELL 15 @ 99
+| ACCEPTED 3 SELL 15 @ 99
+| FILLED 3 ASK 10 @ 99
+| FILLED 1 BID 10 @ 99
+| FULFILLED 1
+? no order 1
+? order 3 ASK 5 @ 99

@@ -1,0 +1,8 @@
+@book spread
+
+# #3 fills #2 exactly
+> BUY 10 @ 101
+*
+> BUY 10 @ 101
+| ACCEPTED 4 BUY 10 @ 101
+? order 4 BID 10 @ 101

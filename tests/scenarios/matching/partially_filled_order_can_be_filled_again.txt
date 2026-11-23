@@ -1,0 +1,12 @@
+@book spread
+
+# #3; #2 has 6 left
+> BUY 4 @ 101
+*
+> BUY 6 @ 101
+| ACCEPTED 4 BUY 6 @ 101
+| FILLED 4 BID 6 @ 101
+| FILLED 2 ASK 6 @ 101
+| FULFILLED 4
+| FULFILLED 2
+? no order 2

@@ -1,0 +1,12 @@
+@book deep
+
+# #9; #1 has 2 left
+> SELL 3 @ 100
+*
+> SELL 2 @ 100
+| ACCEPTED 10 SELL 2 @ 100
+| FILLED 10 ASK 2 @ 100
+| FILLED 1 BID 2 @ 100
+| FULFILLED 10
+| FULFILLED 1
+? order 2 BID 10 @ 100

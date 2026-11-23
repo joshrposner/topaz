@@ -1,0 +1,6 @@
+@book spread
+
+> BUY 10 @ 100 IOC
+| ACCEPTED 3 BUY 10 @ 100 IOC
+| CANCELED 3
+? unchanged

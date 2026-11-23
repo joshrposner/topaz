@@ -55,10 +55,20 @@ inline std::string repr(Rejected::Reason r) {
   }
 }
 
+// Only non-default TIFs are printed: GTC for limits, IOC for market orders.
 inline std::string repr(Request r) {
   return std::visit(VisitHelper(
-    [](NewLimit nl) { return join(nl.side == Side::Ask ? "SELL" : "BUY", nl.qty.val(), '@', nl.price.val()); },
-    [](NewMarket nm) { return join(nm.side == Side::Ask ? "SELL" : "BUY", nm.qty.val(), "MARKET"); },
+    [](NewLimit nl) {
+      std::string s = join(nl.side == Side::Ask ? "SELL" : "BUY", nl.qty.val(), '@', nl.price.val());
+      if (nl.tif == Tif::ImmediateOrCancel) s += " IOC";
+      if (nl.tif == Tif::FillOrKill) s += " FOK";
+      return s;
+    },
+    [](NewMarket nm) {
+      std::string s = join(nm.side == Side::Ask ? "SELL" : "BUY", nm.qty.val(), "MARKET");
+      if (nm.tif == MarketTif::FillOrKill) s += " FOK";
+      return s;
+    },
     [](Cancel c) { return join("CANCEL", c.id.val()); }
   ), r);
 }

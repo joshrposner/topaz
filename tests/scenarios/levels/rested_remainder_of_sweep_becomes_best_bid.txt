@@ -1,0 +1,7 @@
+@book deep
+
+# takes all 45 asks, rests 5
+> BUY 50 @ 103
+*
+? levels ASK
+? levels BID 103x5 100x15 99x10 98x20

@@ -1,0 +1,7 @@
+@book spread
+
+# fills #2
+> BUY 10 @ 101
+*
+> CANCEL 2
+| REJECTED CANCEL 2 NOT FOUND

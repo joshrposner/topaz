@@ -1,0 +1,8 @@
+@book deep
+
+# the book has more than enough ask qty in total, but only 25 at or below the
+# limit price
+> BUY 26 @ 102 FOK
+| ACCEPTED 9 BUY 26 @ 102 FOK
+| CANCELED 9
+? unchanged

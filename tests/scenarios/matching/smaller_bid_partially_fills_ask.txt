@@ -1,0 +1,9 @@
+@book spread
+
+> BUY 4 @ 101
+| ACCEPTED 3 BUY 4 @ 101
+| FILLED 3 BID 4 @ 101
+| FILLED 2 ASK 4 @ 101
+| FULFILLED 3
+? order 2 ASK 6 @ 101
+? no order 3

@@ -1,0 +1,7 @@
+@book deep
+
+# fills #1 and #2
+> SELL 15 @ 100
+*
+? levels BID 99x10 98x20
+? levels ASK 101x15 102x10 103x20

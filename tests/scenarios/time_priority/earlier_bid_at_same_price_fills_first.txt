@@ -1,0 +1,9 @@
+@book deep
+
+> SELL 3 @ 100
+| ACCEPTED 9 SELL 3 @ 100
+| FILLED 9 ASK 3 @ 100
+| FILLED 1 BID 3 @ 100
+| FULFILLED 9
+? order 1 BID 2 @ 100
+? order 2 BID 10 @ 100

@@ -1,0 +1,6 @@
+@book spread
+
+> BUY 10 @ 100 FOK
+| ACCEPTED 3 BUY 10 @ 100 FOK
+| CANCELED 3
+? unchanged

@@ -1,0 +1,8 @@
+@book empty
+
+> BUY 10 @ 99
+| ACCEPTED 1 BUY 10 @ 99
+> BUY 10 MARKET
+| ACCEPTED 2 BUY 10 MARKET
+| CANCELED 2
+? no order 2

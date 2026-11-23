@@ -1,0 +1,6 @@
+@book deep
+
+# fills 101 and 102 completely
+> BUY 25 @ 102
+*
+? levels ASK 103x20

@@ -1,0 +1,6 @@
+@book spread
+
+> CANCEL 1
+*
+? levels BID
+? levels ASK 101x10

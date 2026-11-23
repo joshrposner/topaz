@@ -1,0 +1,6 @@
+@book spread
+
+> CANCEL 1
+| CANCELED 1
+? no order 1
+? order 2 ASK 10 @ 101

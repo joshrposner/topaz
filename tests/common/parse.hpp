@@ -48,9 +48,20 @@ class Tokens {
     return toks_[pos_++];
   }
 
+  /// The next token without consuming it, or "" at the end of the line.
+  std::string_view peek() const {
+    return pos_ == toks_.size() ? std::string_view() : toks_[pos_];
+  }
+
   template <typename T>
   T next_int() {
-    std::string_view tok = next();
+    return to_int<T>(next());
+  }
+
+  /// Parses @p tok (which need not come from this line) as a T, reporting
+  /// failures against this line.
+  template <typename T>
+  T to_int(std::string_view tok) const {
     typename T::Rep val{};
     const char* first = tok.data();
     const char* last = tok.data() + tok.size();
@@ -108,11 +119,30 @@ inline Request parse_request(Tokens& t) {
 
   Qty qty = t.next_int<Qty>();
   std::string_view kind = t.next();
+  // Optional TIF suffix; without one a limit is GTC and a market order is IOC.
   if (kind == "MARKET") {
-    return NewMarket(side, qty, MarketTif::ImmediateOrCancel);
+    MarketTif tif = MarketTif::ImmediateOrCancel;
+    if (t.peek() == "IOC") {
+      t.next();
+    } else if (t.peek() == "FOK") {
+      t.next();
+      tif = MarketTif::FillOrKill;
+    }
+    return NewMarket(side, qty, tif);
   }
   if (kind == "@") {
-    return NewLimit(side, t.next_int<Price>(), qty, Tif::GoodTilCancel);
+    Price price = t.next_int<Price>();
+    Tif tif = Tif::GoodTilCancel;
+    if (t.peek() == "GTC") {
+      t.next();
+    } else if (t.peek() == "IOC") {
+      t.next();
+      tif = Tif::ImmediateOrCancel;
+    } else if (t.peek() == "FOK") {
+      t.next();
+      tif = Tif::FillOrKill;
+    }
+    return NewLimit(side, price, qty, tif);
   }
   t.fail(std::format("expected \"@\" or MARKET, got \"{}\"", kind));
 }

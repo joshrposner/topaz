@@ -1,0 +1,5 @@
+@book spread
+
+> BUY -5 MARKET
+| REJECTED BUY -5 MARKET INVALID QTY
+? unchanged

@@ -1,0 +1,6 @@
+@book spread
+
+# would cross if it had qty
+> BUY -5 @ 101
+| REJECTED BUY -5 @ 101 INVALID QTY
+? unchanged

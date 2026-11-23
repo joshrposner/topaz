@@ -1,0 +1,5 @@
+@book empty
+
+> SELL 10 @ 100
+| ACCEPTED 1 SELL 10 @ 100
+? order 1 ASK 10 @ 100

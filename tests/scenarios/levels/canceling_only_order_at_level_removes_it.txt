@@ -1,0 +1,6 @@
+@book deep
+
+# only order at bid 99
+> CANCEL 3
+*
+? levels BID 100x15 98x20

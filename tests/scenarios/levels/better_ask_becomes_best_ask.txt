@@ -1,0 +1,5 @@
+@book spread
+
+> SELL 5 @ 100
+*
+? levels ASK 100x5 101x10

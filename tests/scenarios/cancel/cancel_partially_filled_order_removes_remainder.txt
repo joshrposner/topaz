@@ -1,0 +1,8 @@
+@book spread
+
+# #2 has 6 left
+> BUY 4 @ 101
+*
+> CANCEL 2
+| CANCELED 2
+? no order 2

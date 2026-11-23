@@ -1,0 +1,6 @@
+@book spread
+
+> BUY 10 @ 100
+| ACCEPTED 3 BUY 10 @ 100
+? order 3 BID 10 @ 100
+? orders 3
